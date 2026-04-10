@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum AuthProvider {
+  GOOGLE
+  GITHUB
+}
+
+enum MediaDisposition {
+  VIEW
+  DOWNLOAD
+}
+
+enum OwnerType {
+  USER
+  GUEST
+}
+
+enum ClaimStatus {
+  UNCLAIMED
+  CLAIMED
+  EXPIRED
+}
+
+enum AccountType {
+  FREE_6M
+  SUBSCRIPTION
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String?
+  role         UserRole @default(USER)
+  accountType  AccountType @default(FREE_6M)
+  planName     String?
+  planValidUntil DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  identities   UserIdentity[]
+  mediaFiles   MediaFile[]
+  claimedMedia MediaFile[] @relation("claimedBy")
+}
+
+model UserIdentity {
+  id                String       @id @default(uuid())
+  userId            String
+  provider          AuthProvider
+  providerSubjectId String
+  createdAt         DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSubjectId])
+}
+
+model GuestSession {
+  id             String    @id @default(uuid())
+  tokenHash      String    @unique
+  startedAt      DateTime?
+  expiresAt      DateTime?
+  uploadCount    Int       @default(0)
+  totalBytes     BigInt    @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  mediaFiles     MediaFile[]
+}
+
+model MediaFile {
+  id               String           @id @default(uuid())
+  ownerType        OwnerType
+  userId           String?
+  guestSessionId   String?
+  claimedByUserId  String?
+  claimStatus      ClaimStatus      @default(UNCLAIMED)
+  filename         String
+  mimeType         String
+  extension        String?
+  sizeBytes        BigInt
+  storagePath      String
+  isActive         Boolean          @default(true)
+  allowDownload    Boolean          @default(false)
+  disposition      MediaDisposition @default(VIEW)
+  expiresAt        DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user          User?         @relation(fields: [userId], references: [id])
+  guestSession  GuestSession? @relation(fields: [guestSessionId], references: [id])
+  claimedBy     User?         @relation("claimedBy", fields: [claimedByUserId], references: [id])
+  versions      MediaVersion[]
+  imageLinks    ImageLink[]
+  qrTokens      QrToken[]
+
+  @@index([userId])
+  @@index([guestSessionId])
+  @@index([expiresAt])
+}
+
+model MediaVersion {
+  id          String   @id @default(uuid())
+  mediaFileId String
+  versionNo   Int
+  storagePath String
+  sizeBytes   BigInt
+  mimeType    String
+  createdAt   DateTime @default(now())
+
+  mediaFile MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+
+  @@unique([mediaFileId, versionNo])
+}
+
+model ImageLink {
+  id          String   @id @default(uuid())
+  mediaFileId String
+  extension   String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mediaFile MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model QrToken {
+  id          String   @id @default(uuid())
+  mediaFileId String
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  mediaFile MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model AccessLog {
+  id          String   @id @default(uuid())
+  mediaFileId String?
+  action      String
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@linkforge/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo \"Shared package build placeholder\"",
+    "lint": "echo \"Shared lint placeholder\"",
+    "test": "echo \"Shared test placeholder\"",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --check ."
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "prettier": "^3.5.3"
+  }
+}
