@@ -21,7 +21,10 @@ export class ImageLinkService {
     }
 
     const extension = media.extension || "bin";
-    const expiresAt = new Date(Date.now() + SIX_MONTHS_MS);
+    const defaultExpiresAt = new Date(Date.now() + SIX_MONTHS_MS);
+    const expiresAt = media.expiresAt
+      ? new Date(Math.min(media.expiresAt.getTime(), defaultExpiresAt.getTime()))
+      : defaultExpiresAt;
 
     const link = await this.imageRepo.create(media.id, extension, expiresAt);
     return {

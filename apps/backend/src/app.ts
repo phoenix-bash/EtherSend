@@ -11,6 +11,8 @@ import { registerAuthRoutes } from "./modules/auth/routes.js";
 import { registerMediaRoutes } from "./modules/media/routes.js";
 import { registerImageRoutes } from "./modules/image-links/routes.js";
 import { registerQrRoutes } from "./modules/qr/routes.js";
+import { registerBatchRoutes } from "./modules/batches/routes.js";
+import { registerActivityRoutes } from "./modules/activity/routes.js";
 import { registerCleanupRoutes } from "./modules/cleanup/routes.js";
 import { scheduleRecurringCleanup } from "./queues/cleanup-queue.js";
 
@@ -22,11 +24,27 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(cors, {
-    origin: env.FRONTEND_BASE_URL,
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (env.NODE_ENV !== "production") {
+        callback(null, true);
+        return;
+      }
+
+      callback(null, origin === env.FRONTEND_BASE_URL);
+    },
     credentials: true
   });
 
-  await app.register(helmet);
+  await app.register(helmet, {
+    crossOriginResourcePolicy: {
+      policy: "cross-origin"
+    }
+  });
   await app.register(cookie, {
     secret: env.GUEST_SESSION_SECRET,
     hook: "onRequest"
@@ -56,6 +74,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await registerMediaRoutes(app);
   await registerImageRoutes(app);
   await registerQrRoutes(app);
+  await registerBatchRoutes(app);
+  await registerActivityRoutes(app);
   await registerCleanupRoutes(app);
 
   try {

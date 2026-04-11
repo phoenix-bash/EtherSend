@@ -1,4 +1,5 @@
 import { env } from "../../config/env.js";
+import { prisma } from "../../config/prisma.js";
 import { LocalStorageProvider } from "../../providers/storage/local-storage.provider.js";
 import { MediaRepository } from "../media/repository.js";
 
@@ -6,6 +7,7 @@ export interface CleanupSummary {
   scanned: number;
   deleted: number;
   deactivated: number;
+  sessionsCleared: number;
 }
 
 export class CleanupService {
@@ -21,6 +23,11 @@ export class CleanupService {
     for (const media of expired) {
       try {
         await this.storage.delete(media.storagePath);
+      } catch {
+        // Continue and remove metadata so expired guest content is no longer accessible.
+      }
+
+      try {
         await this.mediaRepository.hardDelete(media.id);
         deleted += 1;
       } catch {
@@ -29,10 +36,22 @@ export class CleanupService {
       }
     }
 
+    const clearedSessions = await prisma.guestSession.deleteMany({
+      where: {
+        expiresAt: {
+          lte: new Date()
+        },
+        mediaFiles: {
+          none: {}
+        }
+      }
+    });
+
     return {
       scanned: expired.length,
       deleted,
-      deactivated
+      deactivated,
+      sessionsCleared: clearedSessions.count
     };
   }
 }

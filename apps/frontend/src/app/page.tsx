@@ -1,34 +1,58 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { DashboardHeader } from "../components/dashboard-header";
+import { useEffect, useState } from "react";
+import { ControlShell } from "../components/control-shell";
 import { OverviewCards } from "../features/dashboard/overview-cards";
-import { ImageManager } from "../features/image/image-manager";
+import { PublicLanding } from "../features/dashboard/public-landing";
+import { MediaUploader } from "../features/image/image-manager";
 import { MediaManager } from "../features/media/media-manager";
-import { QrGenerator } from "../features/qr/qr-generator";
+import { useAuthSession } from "../hooks/use-auth-session";
+
+const GUEST_MODE_STORAGE_KEY = "lf_guest_mode_enabled";
 
 export default function HomePage() {
+  const { user } = useAuthSession();
+  const [guestModeEnabled, setGuestModeEnabled] = useState(false);
+
+  useEffect(() => {
+    const storedValue = window.localStorage.getItem(GUEST_MODE_STORAGE_KEY);
+    setGuestModeEnabled(storedValue === "true");
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    window.localStorage.removeItem(GUEST_MODE_STORAGE_KEY);
+    setGuestModeEnabled(false);
+  }, [user]);
+
+  function enableGuestMode(): void {
+    window.localStorage.setItem(GUEST_MODE_STORAGE_KEY, "true");
+    setGuestModeEnabled(true);
+  }
+
+  if (!user && !guestModeEnabled) {
+    return <PublicLanding onContinueAsGuest={enableGuestMode} />;
+  }
+
   return (
-    <main className="min-h-screen px-4 py-8 md:px-10">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <DashboardHeader />
+    <ControlShell plainHeader searchPlaceholder="SEARCH ASSETS OR BATCHES...">
+      <div className="flex flex-col gap-7">
+        <section className="flex flex-wrap items-start justify-between gap-4 md:items-end">
+          <div>
+            <h2 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">System Overview</h2>
+            <p className="mt-1 text-sm text-on-surface-variant">Real-time intelligence and asset distribution metrics.</p>
+          </div>
+        </section>
 
-        <motion.section
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="soft-grid rounded-3xl border border-border bg-card p-4 shadow-lift md:p-6"
-        >
-          <OverviewCards />
-        </motion.section>
+        <OverviewCards />
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ImageManager />
-          <QrGenerator />
-        </div>
+        <MediaUploader />
 
         <MediaManager />
       </div>
-    </main>
+    </ControlShell>
   );
 }

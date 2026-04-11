@@ -21,7 +21,8 @@ const envSchema = z.object({
   CLEANUP_INTERVAL_SECONDS: z.coerce.number().int().min(30).default(120),
   CLEANUP_BATCH_SIZE: z.coerce.number().int().min(1).default(100),
   LOCAL_STORAGE_ROOT: z.string().default("./storage"),
-  MAX_UPLOAD_BYTES: z.coerce.number().positive().default(104857600)
+  MAX_UPLOAD_BYTES: z.coerce.number().positive().default(104857600),
+  SIGNED_IN_MAX_TOTAL_BYTES: z.coerce.number().int().positive().default(1073741824)
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

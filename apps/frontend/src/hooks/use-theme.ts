@@ -2,21 +2,39 @@
 
 import { useEffect, useState } from "react";
 
+const THEME_STORAGE_KEY = "lf_theme_mode";
+type ThemeMode = "light" | "dark";
+
 export function useThemeMode() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<ThemeMode>("light");
+
+  const applyTheme = (nextTheme: ThemeMode): void => {
+    setTheme(nextTheme);
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+  };
 
   useEffect(() => {
-    const persisted = window.localStorage.getItem("linkforge-theme") as "light" | "dark" | null;
-    const initial = persisted ?? "light";
-    setTheme(initial);
-    document.documentElement.classList.toggle("dark", initial === "dark");
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (storedTheme === "light" || storedTheme === "dark") {
+      applyTheme(storedTheme);
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    applyTheme(mediaQuery.matches ? "dark" : "light");
+
+    const handleSystemThemeChange = (event: MediaQueryListEvent): void => {
+      applyTheme(event.matches ? "dark" : "light");
+    };
+
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
+
+    return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
   }, []);
 
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.classList.toggle("dark", next === "dark");
-    window.localStorage.setItem("linkforge-theme", next);
+  const toggleTheme = (): void => {
+    applyTheme(theme === "dark" ? "light" : "dark");
   };
 
   return { theme, toggleTheme };

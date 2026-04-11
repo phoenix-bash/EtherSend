@@ -31,13 +31,40 @@ export class MediaRepository {
     });
   }
 
-  async updateContent(id: string, data: { storagePath: string; sizeBytes: bigint; mimeType: string }): Promise<MediaFile> {
+  listByUser(userId: string, role: "ADMIN" | "USER", limit = 50): Promise<MediaFile[]> {
+    return prisma.mediaFile.findMany({
+      where: role === "ADMIN" ? undefined : { ownerType: "USER", userId },
+      orderBy: { createdAt: "desc" },
+      take: limit
+    });
+  }
+
+  listByGuest(guestSessionId: string, requestStartMs: number, limit = 50): Promise<MediaFile[]> {
+    return prisma.mediaFile.findMany({
+      where: {
+        ownerType: "GUEST",
+        guestSessionId,
+        expiresAt: {
+          gte: new Date(requestStartMs)
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit
+    });
+  }
+
+  async updateContent(
+    id: string,
+    data: { storagePath: string; sizeBytes: bigint; mimeType: string; filename?: string; extension?: string }
+  ): Promise<MediaFile> {
     const updated = await prisma.mediaFile.update({
       where: { id },
       data: {
         storagePath: data.storagePath,
         sizeBytes: data.sizeBytes,
-        mimeType: data.mimeType
+        mimeType: data.mimeType,
+        filename: data.filename,
+        extension: data.extension
       }
     });
 

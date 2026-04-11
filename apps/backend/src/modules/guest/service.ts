@@ -27,7 +27,9 @@ export class GuestService {
       });
 
       if (existing) {
-        return { token: rawToken, sessionId: existing.id };
+        if (!existing.expiresAt || existing.expiresAt.getTime() > Date.now()) {
+          return { token: rawToken, sessionId: existing.id };
+        }
       }
     }
 
@@ -63,8 +65,9 @@ export class GuestService {
       throw new HttpError(401, "Guest session not found");
     }
 
-    const startedAt = guest.startedAt ?? new Date();
-    const expiresAt = guest.expiresAt ?? new Date(startedAt.getTime() + TEN_MIN_MS);
+    const now = new Date();
+    const startedAt = guest.startedAt ?? now;
+    const expiresAt = new Date(now.getTime() + TEN_MIN_MS);
 
     await prisma.guestSession.update({
       where: { id: sessionId },

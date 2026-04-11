@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { fetchCurrentUser, logoutSession, type AuthUser } from "../lib/api-client";
+import { SIGNED_OUT_EVENT } from "../lib/events";
 
 export function useAuthSession() {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -15,12 +16,24 @@ export function useAuthSession() {
   }, []);
 
   const signOut = useCallback(async () => {
-    await logoutSession();
     setUser(null);
+    setLoading(false);
+    window.dispatchEvent(new Event(SIGNED_OUT_EVENT));
+    await logoutSession();
   }, []);
 
   useEffect(() => {
+    function onSignedOut(): void {
+      setUser(null);
+      setLoading(false);
+    }
+
+    window.addEventListener(SIGNED_OUT_EVENT, onSignedOut);
     void refresh();
+
+    return () => {
+      window.removeEventListener(SIGNED_OUT_EVENT, onSignedOut);
+    };
   }, [refresh]);
 
   return {

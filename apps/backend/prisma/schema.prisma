@@ -51,6 +51,7 @@ model User {
 
   identities   UserIdentity[]
   mediaFiles   MediaFile[]
+  mediaBatches MediaBatch[]
   claimedMedia MediaFile[] @relation("claimedBy")
 }
 
@@ -77,6 +78,7 @@ model GuestSession {
   updatedAt      DateTime  @updatedAt
 
   mediaFiles     MediaFile[]
+  mediaBatches   MediaBatch[]
 }
 
 model MediaFile {
@@ -104,9 +106,55 @@ model MediaFile {
   versions      MediaVersion[]
   imageLinks    ImageLink[]
   qrTokens      QrToken[]
+  batchItems    MediaBatchItem[]
 
   @@index([userId])
   @@index([guestSessionId])
+  @@index([expiresAt])
+}
+
+model MediaBatch {
+  id             String        @id @default(uuid())
+  ownerType      OwnerType
+  userId         String?
+  guestSessionId String?
+  name           String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user         User?           @relation(fields: [userId], references: [id])
+  guestSession GuestSession?   @relation(fields: [guestSessionId], references: [id])
+  items        MediaBatchItem[]
+  shareToken   BatchShareToken?
+
+  @@index([userId])
+  @@index([guestSessionId])
+}
+
+model MediaBatchItem {
+  id         String    @id @default(uuid())
+  batchId    String
+  mediaFileId String
+  createdAt  DateTime  @default(now())
+
+  batch     MediaBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  mediaFile MediaFile  @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, mediaFileId])
+  @@index([mediaFileId])
+}
+
+model BatchShareToken {
+  id            String    @id @default(uuid())
+  batchId       String    @unique
+  token         String    @unique
+  allowDownload Boolean   @default(false)
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  batch MediaBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
   @@index([expiresAt])
 }
 

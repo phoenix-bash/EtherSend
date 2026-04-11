@@ -3,6 +3,7 @@ import type { MultipartFile } from "@fastify/multipart";
 import type { OwnerType } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { lookup as lookupMime } from "mime-types";
+import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
 import { LocalStorageProvider } from "../../providers/storage/local-storage.provider.js";
 import { HttpError } from "../../utils/http-error.js";
@@ -21,6 +22,32 @@ interface UploadMediaInput {
 
 export class MediaService {
   constructor(private readonly repository: MediaRepository) {}
+
+  private async assertSignedInCanStore(userId: string, fileBytes: number, excludeMediaId?: string): Promise<void> {
+    const usage = await prisma.mediaFile.aggregate({
+      where: {
+        ownerType: "USER",
+        userId,
+        ...(excludeMediaId
+          ? {
+              id: {
+                not: excludeMediaId
+              }
+            }
+          : {})
+      },
+      _sum: {
+        sizeBytes: true
+      }
+    });
+
+    const currentBytes = usage._sum.sizeBytes ?? 0n;
+    const projectedBytes = currentBytes + BigInt(Math.max(0, fileBytes));
+
+    if (projectedBytes > BigInt(env.SIGNED_IN_MAX_TOTAL_BYTES)) {
+      throw new HttpError(413, "Signed-in storage limit reached");
+    }
+  }
 
   private async resolveSignedInExpiry(userId: string): Promise<Date> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -50,6 +77,15 @@ export class MediaService {
     });
 
     const fileBytes = Math.max(0, Number((input.file.file as { bytesRead?: number }).bytesRead ?? 0));
+
+    if (ownerType === "USER" && input.userId) {
+      try {
+        await this.assertSignedInCanStore(input.userId, fileBytes);
+      } catch (error) {
+        await storage.delete(storagePath);
+        throw error;
+      }
+    }
 
     if (ownerType === "GUEST" && input.guestSessionId) {
       try {
@@ -100,11 +136,18 @@ export class MediaService {
     await storage.replace({ stream: file.file, path: storagePath });
 
     const fileBytes = Math.max(0, Number((file.file as { bytesRead?: number }).bytesRead ?? 0));
+    const extension = extname(file.filename || "").replace(".", "").toLowerCase() || undefined;
+
+    if (media.ownerType === "USER" && media.userId) {
+      await this.assertSignedInCanStore(media.userId, fileBytes, media.id);
+    }
 
     return this.repository.updateContent(mediaId, {
       storagePath,
       sizeBytes: BigInt(fileBytes),
-      mimeType: file.mimetype || media.mimeType
+      mimeType: file.mimetype || media.mimeType,
+      filename: file.filename || media.filename,
+      extension
     });
   }
 }

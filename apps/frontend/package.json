@@ -13,10 +13,12 @@
     "format": "prettier --check ."
   },
   "dependencies": {
+    "@fontsource/material-symbols-outlined": "^5.2.40",
     "clsx": "^2.1.1",
     "framer-motion": "^12.5.0",
     "lucide-react": "^0.483.0",
     "next": "^15.2.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.0.2"

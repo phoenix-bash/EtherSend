@@ -29,6 +29,12 @@ export function AuthCallbackClient() {
         setStatus("success");
         setMessage(`Welcome ${user.name || user.email}`);
 
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({ type: "linkforge:auth-success" }, window.location.origin);
+          window.close();
+          return;
+        }
+
         window.setTimeout(() => {
           router.replace("/");
         }, 700);
@@ -42,19 +48,53 @@ export function AuthCallbackClient() {
   }, [router, searchParams]);
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-10">
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 rounded-3xl border border-border bg-card p-6 shadow-lift">
-        <h1 className="text-2xl font-semibold">Authentication</h1>
-        <p className="text-sm">{message}</p>
+    <main className="mesh-gradient relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-10">
+      <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-primary/5 blur-[120px]"></div>
+      <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-secondary/5 blur-[120px]"></div>
 
-        {status === "loading" && <p className="text-sm opacity-80">Please wait...</p>}
-        {status === "success" && <p className="text-sm text-accent">Signed in. Redirecting...</p>}
-        {status === "error" && (
-          <Link href="/auth/signin" className="w-fit rounded-xl border border-border bg-bg px-3 py-2 text-sm">
-            Back to sign in
-          </Link>
-        )}
-      </div>
+      <section className="glass-card relative z-10 w-full max-w-[440px] rounded-lg border border-outline-variant/20 p-10 shadow-[0px_0px_36px_rgba(75,188,214,0.06)]">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Authentication Gateway</p>
+        <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-on-surface">Finalizing Sign-In</h1>
+        <p className="mt-3 text-sm text-on-surface-variant">{message}</p>
+
+        <div className="mt-6 rounded-lg border border-outline-variant/20 bg-surface-container p-4">
+          {status === "loading" ? (
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
+              <span className="material-symbols-outlined text-sm">progress_activity</span>
+              Processing OAuth callback...
+            </p>
+          ) : null}
+
+          {status === "success" ? (
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
+              <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+                check_circle
+              </span>
+              Session established. Redirecting...
+            </p>
+          ) : null}
+
+          {status === "error" ? (
+            <div className="space-y-3">
+              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-error">
+                <span className="material-symbols-outlined text-sm">error</span>
+                Authorization failed
+              </p>
+              <Link href="/auth/signin" className="inline-flex w-fit rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-xs font-semibold uppercase tracking-wider text-on-surface hover:text-primary">
+                Back to sign in
+              </Link>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-6 flex items-center justify-between text-[10px] uppercase tracking-widest text-on-surface-variant">
+          <p>OAuth callback</p>
+          <p>{status.toUpperCase()}</p>
+        </div>
+      </section>
+
+      <div className="fixed left-0 top-0 z-20 h-1 w-full bg-gradient-to-r from-primary/0 via-primary/25 to-primary/0"></div>
+      <div className="fixed bottom-0 left-0 z-20 h-1 w-full bg-gradient-to-r from-secondary/0 via-secondary/15 to-secondary/0"></div>
     </main>
   );
 }

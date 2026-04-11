@@ -19,7 +19,7 @@ export function DashboardHeader() {
     >
       <div>
         <p className="text-xs uppercase tracking-[0.2em] text-accent">LinkForge Control Plane</p>
-        <h1 className="text-2xl font-semibold md:text-3xl">Persistent Media & Link Dashboard</h1>
+        <h1 className="text-2xl font-semibold md:text-3xl">Persistent Media & Link HOME</h1>
       </div>
 
       <div className="flex items-center gap-2">
@@ -50,10 +50,11 @@ export function DashboardHeader() {
         <button
           type="button"
           onClick={toggleTheme}
-          className="inline-flex items-center gap-2 rounded-xl border border-border bg-bg px-3 py-2 text-sm hover:opacity-90"
+          className="inline-flex items-center gap-2 rounded-xl border border-border bg-bg px-3 py-2 text-sm"
+          aria-label="Toggle color theme"
         >
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          {theme === "dark" ? "Light" : "Dark"}
+          {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          {theme === "dark" ? "Switch to light" : "Switch to dark"}
         </button>
       </div>
     </motion.header>

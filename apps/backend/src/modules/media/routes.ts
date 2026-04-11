@@ -31,15 +31,14 @@ async function resolveActor(request: {
   if (request.headers.authorization) {
     try {
       await request.jwtVerify();
+      return {
+        kind: "user",
+        userId: request.user?.sub ?? "",
+        role: request.user?.role ?? "USER"
+      };
     } catch {
-      throw new HttpError(401, "Invalid auth token");
+      // Guest-capable routes should degrade gracefully when bearer tokens are stale.
     }
-
-    return {
-      kind: "user",
-      userId: request.user?.sub ?? "",
-      role: request.user?.role ?? "USER"
-    };
   }
 
   return {
@@ -153,8 +152,18 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
     return reply.status(204).send();
   });
 
-  app.get("/media", { preHandler: [requireAuth] }, async () => {
-    const items = await new MediaRepository().list(50);
+  app.get("/media", { preHandler: [ensureGuestSession] }, async (request, reply) => {
+    const actor = await resolveActor(request);
+    const repo = new MediaRepository();
+    const items =
+      actor.kind === "user"
+        ? await repo.listByUser(actor.userId, actor.role, 50)
+        : await repo.listByGuest(actor.guestSessionId, actor.requestStartMs, 50);
+
+    if (actor.kind === "guest" && !request.headers.authorization && !request.cookies.lf_access_token) {
+      reply.header("x-linkforge-actor", "guest");
+    }
+
     return { items: items.map(serializeMedia) };
   });
 
