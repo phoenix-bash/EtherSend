@@ -30,6 +30,22 @@ require_cmd() {
   fi
 }
 
+run_docker_compose() {
+  if docker compose version >/dev/null 2>&1; then
+    docker compose "$@"
+    return
+  fi
+
+  if command -v docker-compose >/dev/null 2>&1; then
+    docker-compose "$@"
+    return
+  fi
+
+  echo "[ERROR] Neither 'docker compose' nor 'docker-compose' is available."
+  echo "[ERROR] Install Docker Compose plugin or docker-compose binary, then retry."
+  exit 1
+}
+
 ensure_env_file() {
   local source_file="$1"
   local target_file="$2"
@@ -134,7 +150,7 @@ main() {
 
   if [[ "$SKIP_INFRA" != "true" ]]; then
     echo "[STEP] Starting PostgreSQL and Redis via docker compose..."
-    docker compose up -d
+    run_docker_compose up -d
   else
     echo "[INFO] Skipping infrastructure start (--skip-infra)."
   fi

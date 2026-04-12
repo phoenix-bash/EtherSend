@@ -30,3 +30,7 @@
  GET / 200 in 48ms
  GET /library 200 in 35ms
  GET /batches 200 in 30ms
+/home/phoenix/LinkForge/apps/frontend:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @linkforge/frontend@0.1.0 dev: `next dev -p 3000`
+Command failed with signal "SIGTERM"
+[?25h
