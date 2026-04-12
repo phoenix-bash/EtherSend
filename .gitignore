@@ -10,3 +10,4 @@ coverage/
 .DS_Store
 apps/backend/storage/
 docker-compose.yml
+.codex
