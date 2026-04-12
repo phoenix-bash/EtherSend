@@ -24,10 +24,77 @@ const themeBootstrapScript = `(() => {
   }
 })();`;
 
+const hydrationSanitizerScript = `(() => {
+  try {
+    const shouldRemoveAttribute = (name) => {
+      return (
+        name === "data-new-gr-c-s-check-loaded" ||
+        name === "data-lt-installed" ||
+        name === "cz-shortcut-listen" ||
+        name.startsWith("bis_") ||
+        name.startsWith("data-gr-")
+      );
+    };
+
+    const sanitizeElement = (element) => {
+      const attributeNames = Array.from(element.attributes).map((attr) => attr.name);
+      for (const name of attributeNames) {
+        if (shouldRemoveAttribute(name)) {
+          element.removeAttribute(name);
+        }
+      }
+    };
+
+    const sanitizeSubtree = (rootNode) => {
+      if (!(rootNode instanceof Element)) {
+        return;
+      }
+
+      sanitizeElement(rootNode);
+
+      const children = rootNode.querySelectorAll("*");
+      for (const child of children) {
+        sanitizeElement(child);
+      }
+    };
+
+    sanitizeSubtree(document.documentElement);
+
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === "attributes" && mutation.target instanceof Element) {
+          sanitizeElement(mutation.target);
+        }
+
+        for (const addedNode of mutation.addedNodes) {
+          sanitizeSubtree(addedNode);
+        }
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+      attributes: true
+    });
+
+    const stopObserver = () => {
+      observer.disconnect();
+      sanitizeSubtree(document.documentElement);
+    };
+
+    window.addEventListener("load", stopObserver, { once: true });
+    window.setTimeout(stopObserver, 10000);
+  } catch {
+    // Ignore sanitizer failures to avoid blocking app boot.
+  }
+})();`;
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: hydrationSanitizerScript }} />
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
       <body suppressHydrationWarning className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>

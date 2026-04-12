@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { listBatches, listMedia, type BatchListItem, type MediaItem } from "../../lib/api-client";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT } from "../../lib/events";
 import { useAuthSession } from "../../hooks/use-auth-session";
+import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
 
 const GUEST_STORAGE_CAP_BYTES = 100 * 1024 * 1024;
 const SIGNED_IN_STORAGE_CAP_BYTES = 1024 * 1024 * 1024;
@@ -36,16 +37,11 @@ function formatTtl(expiryAt: number | null, nowMs: number): string {
     return "NO ACTIVE EXPIRY";
   }
 
-  const remainingMs = Math.max(0, expiryAt - nowMs);
-  if (remainingMs <= 0) {
+  if (expiryAt <= nowMs) {
     return "EXPIRED";
   }
 
-  const totalMinutes = Math.floor(remainingMs / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  return formatDateTimeDdMmYyyyHm(expiryAt);
 }
 
 function computeOverview(items: MediaItem[], batches: BatchListItem[], storageCapBytes: number, nowMs: number): OverviewState {

@@ -57,3 +57,64 @@ LinkForge is a cloud-ready media and persistent-link control platform foundation
 - Set `MAINTENANCE_API_KEY` (optional) to protect cleanup maintenance routes via `x-maintenance-key` header.
 - Azure Blob adapter is intentionally stubbed for phase-2 cloud cutover.
 - Cleanup queue + worker scaffold is implemented; recurring scheduling is the next increment.
+
+## AWS Deployment (EC2)
+
+This repo now includes production deployment assets:
+
+- PM2 process config: `ecosystem.config.cjs`
+- Nginx reverse-proxy template: `deploy/nginx/linkforge.conf`
+- EC2 base setup script: `deploy/aws/setup_ec2_base.sh`
+- EC2 deploy script: `deploy/aws/deploy_ec2.sh`
+- Strict migration bootstrap: `deploy/aws/bootstrap_migrations.sh`
+- Docker production files:
+   - `Dockerfile.backend`
+   - `Dockerfile.frontend`
+   - `docker-compose.prod.yml`
+- systemd units and installer:
+   - `deploy/systemd/linkforge-backend.service`
+   - `deploy/systemd/linkforge-frontend.service`
+   - `deploy/systemd/install_units.sh`
+
+### Quick Flow
+
+1. Provision Ubuntu EC2 and open security group ports 22/80/443.
+2. Run base setup on EC2:
+   - `bash deploy/aws/setup_ec2_base.sh`
+3. Set production values in:
+   - `.env`
+   - `apps/backend/.env`
+   - `apps/frontend/.env.local`
+   - Required for single-host no-port access:
+     - `apps/frontend/.env.local` -> `NEXT_PUBLIC_API_BASE_URL=/api`
+     - `apps/backend/.env` -> `FRONTEND_BASE_URL=https://your-domain.com` (or `http://YOUR_SERVER_IP`)
+     - `apps/backend/.env` -> `OAUTH_CALLBACK_BASE_URL=https://your-domain.com/api` (or `http://YOUR_SERVER_IP/api`)
+   - OAuth provider callback URIs must include `/api`:
+     - `https://your-domain.com/api/auth/google/callback`
+     - `https://your-domain.com/api/auth/github/callback`
+4. Deploy apps:
+   - `bash deploy/aws/deploy_ec2.sh`
+5. Install Nginx template:
+   - copy `deploy/nginx/linkforge.conf` to `/etc/nginx/sites-available/linkforge.conf`
+   - keep `server_name _;` for direct IP access, or set your domain name
+   - enable site and reload nginx
+
+After Nginx is enabled, users should access LinkForge at `http://YOUR_SERVER_IP` or `https://your-domain.com` without app/backend ports.
+
+### Optional: Docker Compose Production
+
+If you prefer containerized runtime for app services:
+
+- `docker compose -f docker-compose.prod.yml up -d --build`
+
+### Optional: systemd Instead of PM2
+
+Install units (run as root):
+
+- `bash deploy/systemd/install_units.sh --repo-dir=/opt/linkforge --user=ubuntu`
+
+### Important
+
+- Current media storage provider is local filesystem (`apps/backend/storage`).
+- For single-instance EC2 this works with EBS persistence.
+- For multi-instance scaling, implement an S3-backed storage provider and switch routes/services to use provider injection.

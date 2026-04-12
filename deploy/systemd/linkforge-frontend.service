@@ -1,0 +1,19 @@
+[Unit]
+Description=LinkForge Frontend Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/linkforge
+Environment=NODE_ENV=production
+ExecStart=/bin/bash -lc 'cd /opt/linkforge && pnpm --filter @linkforge/frontend start'
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target

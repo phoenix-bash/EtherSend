@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ControlShell } from "../../components/control-shell";
-import { listBatches, type BatchListItem } from "../../lib/api-client";
+import { QRCodeSVG } from "qrcode.react";
+import { listBatches, updateBatchShare, type BatchListItem } from "../../lib/api-client";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT } from "../../lib/events";
+import { formatDateDdMmYyyy } from "../../lib/utils";
 
 function formatBatchName(batch: BatchListItem): string {
   if (batch.name && batch.name.trim()) {
@@ -37,6 +39,7 @@ export default function BatchesPage() {
   const [status, setStatus] = useState("Loading batches...");
   const [origin, setOrigin] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [updatingBatchIds, setUpdatingBatchIds] = useState<string[]>([]);
 
   async function refreshBatches(): Promise<void> {
     setLoading(true);
@@ -95,6 +98,44 @@ export default function BatchesPage() {
     setStatus("Batch URL copied.");
   }
 
+  async function setBatchDownloadAccess(batchId: string, allowDownload: boolean): Promise<void> {
+    setUpdatingBatchIds((current) => {
+      if (current.includes(batchId)) {
+        return current;
+      }
+
+      return [...current, batchId];
+    });
+
+    try {
+      const { share } = await updateBatchShare(batchId, allowDownload);
+      setBatches((current) =>
+        current.map((batch) => {
+          if (batch.id !== batchId || !batch.share) {
+            return batch;
+          }
+
+          return {
+            ...batch,
+            share: {
+              ...batch.share,
+              token: share.token,
+              allowDownload: share.allowDownload,
+              expiresAt: share.expiresAt,
+              publicPath: share.publicPath,
+              publicUrl: share.publicUrl
+            }
+          };
+        })
+      );
+      setStatus(allowDownload ? "Batch download enabled." : "Batch download disabled.");
+    } catch {
+      setStatus("Unable to update batch download setting.");
+    } finally {
+      setUpdatingBatchIds((current) => current.filter((id) => id !== batchId));
+    }
+  }
+
   return (
     <ControlShell searchPlaceholder="Search batch names...">
       <div className="flex flex-col gap-6">
@@ -119,9 +160,10 @@ export default function BatchesPage() {
                   return null;
                 }
 
-                const shareUrl = `${origin}${batch.share.publicPath}`;
-                const expiresAtLabel = new Date(batch.share.expiresAt).toLocaleString();
+                const shareUrl = batch.share.publicUrl ?? `${origin}${batch.share.publicPath}`;
+                const expiresAtLabel = formatDateDdMmYyyy(batch.share.expiresAt);
                 const countdown = formatCountdown(batch.share.expiresAt, nowMs);
+                const isUpdating = updatingBatchIds.includes(batch.id);
 
                 return (
                   <article key={batch.id} className="rounded-lg border border-outline-variant/15 bg-surface-container p-4">
@@ -144,6 +186,16 @@ export default function BatchesPage() {
                       <p className="mt-1 break-all text-xs text-on-surface">{shareUrl}</p>
                     </div>
 
+                    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-outline-variant/15 bg-surface-container-low p-3">
+                      <div className="rounded-lg bg-white p-2">
+                        <QRCodeSVG value={shareUrl} size={96} includeMargin />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Share QR</p>
+                        <p className="mt-1 text-xs text-on-surface-variant">Scan to open this batch on mobile.</p>
+                      </div>
+                    </div>
+
                     <div className="mt-4 flex flex-wrap items-center gap-2">
                       <button
                         type="button"
@@ -164,18 +216,17 @@ export default function BatchesPage() {
                         Open Batch
                       </a>
 
-                      <a
-                        href={shareUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={`rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                          batch.share.allowDownload
-                            ? "border border-tertiary/30 bg-tertiary/10 text-tertiary hover:bg-tertiary/20"
-                            : "pointer-events-none border border-outline-variant/20 bg-surface-container-high text-on-surface-variant"
-                        }`}
-                      >
-                        {batch.share.allowDownload ? "Download Access" : "Download Disabled"}
-                      </a>
+                      <label className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface">
+                        <input
+                          type="checkbox"
+                          checked={batch.share.allowDownload}
+                          disabled={isUpdating}
+                          onChange={(event) => {
+                            void setBatchDownloadAccess(batch.id, event.target.checked);
+                          }}
+                        />
+                        {isUpdating ? "Updating..." : "Allow Download"}
+                      </label>
                     </div>
                   </article>
                 );

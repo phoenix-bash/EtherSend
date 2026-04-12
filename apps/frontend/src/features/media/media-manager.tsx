@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw, Power, Download, Trash2, Link2, Copy } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import {
   absoluteApiUrl,
   createBatch,
@@ -15,10 +16,17 @@ import {
   type MediaItem
 } from "../../lib/api-client";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT, SYSTEM_LOG_EVENT, type SystemLogLevel } from "../../lib/events";
+import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
 
 interface MediaStateBadge {
   label: string;
   className: string;
+}
+
+interface GeneratedLinkQr {
+  url: string;
+  label: string;
+  expiresAt?: string;
 }
 
 function getMediaState(item: MediaItem): MediaStateBadge {
@@ -48,6 +56,7 @@ export function MediaManager() {
   const [batchShareUrl, setBatchShareUrl] = useState<string | null>(null);
   const [batchShareExpiresAt, setBatchShareExpiresAt] = useState<string | null>(null);
   const [directLinks, setDirectLinks] = useState<Record<string, { url: string; expiresAt: string }>>({});
+  const [generatedLinkQr, setGeneratedLinkQr] = useState<GeneratedLinkQr | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   function emitSystemLog(message: string, level: SystemLogLevel = "info"): void {
@@ -93,6 +102,7 @@ export function MediaManager() {
       setBatchShareUrl(null);
       setBatchShareExpiresAt(null);
       setDirectLinks({});
+      setGeneratedLinkQr(null);
       setStatus("Signed out. HOME cleared.");
     }
 
@@ -169,6 +179,11 @@ export function MediaManager() {
         expiresAt: created.link.expiresAt
       }
     }));
+    setGeneratedLinkQr({
+      url,
+      label: `Direct link for ${item.filename}`,
+      expiresAt: created.link.expiresAt
+    });
     await navigator.clipboard.writeText(url);
     setStatus("Direct link generated and copied.");
     emitSystemLog(`Direct link generated for ${item.filename}.`, "success");
@@ -195,11 +210,16 @@ export function MediaManager() {
 
     const batchResult = await createBatch(selectedIds, batchName || undefined);
     const shareResult = await createOrRefreshBatchShare(batchResult.batch.id, batchAllowDownload);
-    const publicUrl = `${window.location.origin}${shareResult.share.publicPath}`;
+    const publicUrl = shareResult.share.publicUrl ?? `${window.location.origin}${shareResult.share.publicPath}`;
 
     setBatchId(batchResult.batch.id);
     setBatchShareUrl(publicUrl);
     setBatchShareExpiresAt(shareResult.share.expiresAt);
+    setGeneratedLinkQr({
+      url: publicUrl,
+      label: `Batch share for ${batchResult.batch.name || "Untitled batch"}`,
+      expiresAt: shareResult.share.expiresAt
+    });
     setStatus("Batch share link created.");
     emitLibraryChange();
     emitSystemLog(`Batch share generated for ${batchResult.batch.name}.`, "success");
@@ -227,6 +247,15 @@ export function MediaManager() {
     await navigator.clipboard.writeText(batchShareUrl);
     setStatus("Batch share link copied.");
     emitSystemLog("Batch share link copied.");
+  }
+
+  async function copyGeneratedQrLink(): Promise<void> {
+    if (!generatedLinkQr) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(generatedLinkQr.url);
+    setStatus("Generated link copied.");
   }
 
   const activeItems = items.filter((item) => item.isActive).length;
@@ -312,7 +341,37 @@ export function MediaManager() {
                 <Copy className="h-4 w-4" />
                 Copy share link
               </button>
-              {batchShareExpiresAt ? <p className="text-[10px] uppercase tracking-wider text-primary">Expires: {new Date(batchShareExpiresAt).toLocaleString()}</p> : null}
+              {batchShareExpiresAt ? (
+                <p className="text-[10px] uppercase tracking-wider text-primary">Expires: {formatDateTimeDdMmYyyyHm(batchShareExpiresAt)}</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {generatedLinkQr ? (
+          <div className="mt-3 rounded-lg border border-outline-variant/20 bg-surface-container-high p-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-lg bg-white p-2">
+                <QRCodeSVG value={generatedLinkQr.url} size={104} includeMargin />
+              </div>
+              <div className="min-w-0 flex-1 space-y-2">
+                <p className="text-[10px] font-label uppercase tracking-wider text-on-surface-variant">Share QR</p>
+                <p className="text-xs text-on-surface">{generatedLinkQr.label}</p>
+                <p className="break-all text-xs text-on-surface-variant">{generatedLinkQr.url}</p>
+                {generatedLinkQr.expiresAt ? (
+                  <p className="text-[10px] uppercase tracking-wider text-primary">Expires: {formatDateTimeDdMmYyyyHm(generatedLinkQr.expiresAt)}</p>
+                ) : null}
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2 text-[10px] font-label uppercase tracking-wider text-on-surface transition-all hover:text-primary"
+                  onClick={() => {
+                    void copyGeneratedQrLink();
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                  Copy link
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
@@ -366,8 +425,8 @@ export function MediaManager() {
                     <td className="px-4 py-3">
                       <span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-label uppercase tracking-wider ${state.className}`}>{state.label}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-on-surface-variant">{item.expiresAt ? new Date(item.expiresAt).toLocaleDateString() : "-"}</td>
-                    <td className="px-4 py-3 text-xs text-on-surface-variant">{new Date(item.updatedAt).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-xs text-on-surface-variant">{item.expiresAt ? formatDateTimeDdMmYyyyHm(item.expiresAt) : "-"}</td>
+                    <td className="px-4 py-3 text-xs text-on-surface-variant">{formatDateTimeDdMmYyyyHm(item.updatedAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         {item.mimeType.startsWith("image/") ? (

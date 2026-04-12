@@ -15,6 +15,7 @@ import {
   type MediaItem
 } from "../../lib/api-client";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT } from "../../lib/events";
+import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
 
 type MediaFilter = "all" | "image" | "video" | "json" | "other";
 type ViewMode = "grid" | "list";
@@ -52,6 +53,16 @@ function formatPropertyValue(value: unknown): string {
     return "-";
   }
 
+  if (typeof value === "string") {
+    const isoLikeDate = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value);
+    if (isoLikeDate) {
+      const formatted = formatDateTimeDdMmYyyyHm(value);
+      return formatted === "-" ? value : formatted;
+    }
+
+    return value;
+  }
+
   if (typeof value === "boolean") {
     return value ? "true" : "false";
   }
@@ -75,6 +86,14 @@ function mediaLabel(item: MediaItem): string {
     return "JSON";
   }
   return "Other";
+}
+
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
 export default function MediaLibraryPage() {
@@ -285,6 +304,13 @@ export default function MediaLibraryPage() {
   function openPreview(item: MediaItem): void {
     setOpenMenuId(null);
     setPreviewError(null);
+
+    if (item.mimeType === "application/pdf" && isMobileDevice()) {
+      window.open(mediaViewUrl(item.id), "_blank", "noopener,noreferrer");
+      setStatus(`Opened ${item.filename} in a new tab for mobile PDF viewing.`);
+      return;
+    }
+
     setPreviewItem(item);
   }
 

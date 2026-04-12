@@ -107,6 +107,7 @@ export interface BatchShareResult {
   allowDownload: boolean;
   expiresAt: string;
   publicPath: string;
+  publicUrl?: string;
 }
 
 export interface BatchListItem {
@@ -119,6 +120,7 @@ export interface BatchListItem {
     allowDownload: boolean;
     expiresAt: string;
     publicPath: string;
+    publicUrl?: string;
   } | null;
 }
 

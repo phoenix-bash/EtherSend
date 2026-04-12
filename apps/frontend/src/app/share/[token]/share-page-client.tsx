@@ -23,6 +23,22 @@ interface PreviewState {
   error?: string;
 }
 
+function revokePreviewUrl(url?: string): void {
+  if (!url || !url.startsWith("blob:")) {
+    return;
+  }
+
+  URL.revokeObjectURL(url);
+}
+
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
 export function SharePageClient({ token }: SharePageClientProps) {
   const [data, setData] = useState<PublicBatchShare | null>(null);
   const [status, setStatus] = useState<string>("Loading shared files...");
@@ -31,9 +47,7 @@ export function SharePageClient({ token }: SharePageClientProps) {
 
   function closePreview(): void {
     setPreview((current) => {
-      if (current?.objectUrl) {
-        URL.revokeObjectURL(current.objectUrl);
-      }
+      revokePreviewUrl(current?.objectUrl);
 
       return null;
     });
@@ -42,10 +56,15 @@ export function SharePageClient({ token }: SharePageClientProps) {
   async function openPreview(file: { filename: string; mimeType: string; id: string }): Promise<void> {
     const sourceUrl = absoluteApiUrl(shareFilePath(token, file.id, "view"));
 
+    if (file.mimeType === "application/pdf" && isMobileDevice()) {
+      window.open(sourceUrl, "_blank", "noopener,noreferrer");
+      setStatus("Opened PDF in a new tab for mobile viewing.");
+      closePreview();
+      return;
+    }
+
     setPreview((current) => {
-      if (current?.objectUrl) {
-        URL.revokeObjectURL(current.objectUrl);
-      }
+      revokePreviewUrl(current?.objectUrl);
 
       return {
         fileName: file.filename,
@@ -130,9 +149,7 @@ export function SharePageClient({ token }: SharePageClientProps) {
   useEffect(() => {
     return () => {
       setPreview((current) => {
-        if (current?.objectUrl) {
-          URL.revokeObjectURL(current.objectUrl);
-        }
+        revokePreviewUrl(current?.objectUrl);
 
         return null;
       });

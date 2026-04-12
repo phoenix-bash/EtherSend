@@ -1,0 +1,32 @@
+
+> @linkforge/frontend@0.1.0 dev /home/phoenix/LinkForge/apps/frontend
+> next dev -p 3000
+
+   ▲ Next.js 15.5.15
+   - Local:        http://localhost:3000
+   - Network:      http://172.18.0.1:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1622ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.1s (1463 modules)
+ ✓ Compiled in 266ms (672 modules)
+ ✓ Compiled / in 169ms (791 modules)
+ GET / 200 in 384ms
+ ✓ Compiled /auth/signin in 375ms (1460 modules)
+ GET /auth/signin 200 in 427ms
+ ✓ Compiled /auth/callback in 408ms (1468 modules)
+ GET /auth/callback?accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlNDBmODI4ZS0zNDY0LTRmZGUtODQzYy0xMTg0Yjk3MmQ2Y2YiLCJyb2xlIjoiVVNFUiIsImVtYWlsIjoiaWFtLmFyaXRyYXBhcnVpQGdtYWlsLmNvbSIsImlhdCI6MTc3NTk3NzQ0NSwiZXhwIjoxNzc1OTc4MzQ1fQ.uka5CCuLRVwe12ttBtn8o4Q3qj9UlXgFcJcU0eDls24&refreshToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlNDBmODI4ZS0zNDY0LTRmZGUtODQzYy0xMTg0Yjk3MmQ2Y2YiLCJyb2xlIjoiVVNFUiIsImVtYWlsIjoiaWFtLmFyaXRyYXBhcnVpQGdtYWlsLmNvbSIsImlhdCI6MTc3NTk3NzQ0NSwiZXhwIjoxNzc2NTgyMjQ1fQ.Gwi3ttHwmxP69W1RBaG97iSvEXxCQs39w3darTYSM08&provider=google 200 in 552ms
+ GET / 200 in 33ms
+ ✓ Compiled /library in 414ms (1475 modules)
+ GET /library 200 in 474ms
+ ✓ Compiled /batches in 487ms (1482 modules)
+ GET /batches 200 in 549ms
+ GET /library 200 in 39ms
+ ○ Compiling /notifications ...
+ ✓ Compiled /notifications in 697ms (1491 modules)
+ GET /notifications 200 in 756ms
+ GET / 200 in 48ms
+ GET /library 200 in 35ms
+ GET /batches 200 in 30ms
