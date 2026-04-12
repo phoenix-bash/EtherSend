@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ControlShell } from "../../components/control-shell";
 import { QRCodeSVG } from "qrcode.react";
 import { listBatches, updateBatchShare, type BatchListItem } from "../../lib/api-client";
@@ -34,9 +35,13 @@ function formatCountdown(expiresAt: string, nowMs: number): string {
 }
 
 export default function BatchesPage() {
+  const searchParams = useSearchParams();
+  const batchIdFromQuery = searchParams.get("batchId");
+  const batchQuery = (searchParams.get("q") ?? "").trim().toLowerCase();
+
   const [batches, setBatches] = useState<BatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState("Loading batches...");
+  const [status, setStatus] = useState("");
   const [origin, setOrigin] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [updatingBatchIds, setUpdatingBatchIds] = useState<string[]>([]);
@@ -46,7 +51,7 @@ export default function BatchesPage() {
     try {
       const { items } = await listBatches();
       setBatches(items);
-      setStatus(items.length > 0 ? "Batches loaded." : "Batches will appear here once you create a media batch.");
+      setStatus("");
     } catch {
       setBatches([]);
       setStatus("Unable to load batches for this session.");
@@ -65,7 +70,7 @@ export default function BatchesPage() {
 
     function onSignedOut(): void {
       setBatches([]);
-      setStatus("Batches will appear here once you create a media batch.");
+      setStatus("");
     }
 
     window.addEventListener(MEDIA_UPLOADED_EVENT, onBatchRelatedChange);
@@ -90,8 +95,13 @@ export default function BatchesPage() {
   }, []);
 
   const sharedBatches = useMemo(() => {
-    return batches.filter((batch) => batch.share);
-  }, [batches]);
+    const shared = batches.filter((batch) => batch.share);
+    if (!batchQuery) {
+      return shared;
+    }
+
+    return shared.filter((batch) => `${formatBatchName(batch)} ${batch.id}`.toLowerCase().includes(batchQuery));
+  }, [batchQuery, batches]);
 
   async function copyBatchUrl(url: string): Promise<void> {
     await navigator.clipboard.writeText(url);
@@ -128,7 +138,7 @@ export default function BatchesPage() {
           };
         })
       );
-      setStatus(allowDownload ? "Batch download enabled." : "Batch download disabled.");
+      setStatus(allowDownload ? "" : "Batch download disabled.");
     } catch {
       setStatus("Unable to update batch download setting.");
     } finally {
@@ -145,12 +155,14 @@ export default function BatchesPage() {
         </section>
 
         <section className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-5">
-          <p className="text-xs text-on-surface-variant">{status}</p>
+          {status ? <p className="text-xs text-on-surface-variant">{status}</p> : null}
+
+          {batchQuery ? <p className="mt-1 text-[10px] uppercase tracking-wider text-primary">Filtered by search: {searchParams.get("q")}</p> : null}
 
           {loading ? <p className="mt-3 text-sm text-on-surface-variant">Loading batches...</p> : null}
 
           {!loading && sharedBatches.length === 0 ? (
-            <p className="mt-3 text-sm text-on-surface-variant">Batches will appear here once you create a media batch.</p>
+            <p className="mt-3 text-sm text-on-surface-variant">{batchQuery ? "No batches matched this search." : "Batches will appear here once you create a media batch."}</p>
           ) : null}
 
           {!loading && sharedBatches.length > 0 ? (
@@ -160,13 +172,20 @@ export default function BatchesPage() {
                   return null;
                 }
 
-                const shareUrl = batch.share.publicUrl ?? `${origin}${batch.share.publicPath}`;
-                const expiresAtLabel = formatDateDdMmYyyy(batch.share.expiresAt);
-                const countdown = formatCountdown(batch.share.expiresAt, nowMs);
+                const share = batch.share;
+                const shareUrl = share.publicUrl ?? `${origin}${share.publicPath}`;
+                const expiresAtLabel = formatDateDdMmYyyy(share.expiresAt);
+                const countdown = formatCountdown(share.expiresAt, nowMs);
                 const isUpdating = updatingBatchIds.includes(batch.id);
+                const focusedBySuggestion = batch.id === batchIdFromQuery;
 
                 return (
-                  <article key={batch.id} className="rounded-lg border border-outline-variant/15 bg-surface-container p-4">
+                  <article
+                    key={batch.id}
+                    className={`rounded-lg border bg-surface-container p-4 ${
+                      focusedBySuggestion ? "border-primary/35 shadow-[inset_0_0_0_1px_rgba(75,188,214,0.18)]" : "border-outline-variant/15"
+                    }`}
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Batch Name</p>
@@ -216,17 +235,34 @@ export default function BatchesPage() {
                         Open Batch
                       </a>
 
-                      <label className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface">
-                        <input
-                          type="checkbox"
-                          checked={batch.share.allowDownload}
+                      <div
+                        className={`inline-flex items-center gap-2 rounded-lg border border-outline-variant/24 bg-surface-container-high px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface ${
+                          isUpdating ? "opacity-70" : ""
+                        }`}
+                      >
+                        <span>Allow Download</span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={share.allowDownload}
+                          aria-label="Allow download for this batch"
                           disabled={isUpdating}
-                          onChange={(event) => {
-                            void setBatchDownloadAccess(batch.id, event.target.checked);
+                          className={`relative inline-flex h-5 w-10 items-center rounded-full border border-outline-variant/65 shadow-inner transition-colors ${
+                            share.allowDownload
+                              ? "bg-primary"
+                              : "bg-surface-container-low"
+                          }`}
+                          onClick={() => {
+                            void setBatchDownloadAccess(batch.id, !share.allowDownload);
                           }}
-                        />
-                        {isUpdating ? "Updating..." : "Allow Download"}
-                      </label>
+                        >
+                          <span
+                            className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-white/70 bg-white/95 shadow-sm transition-transform dark:border-slate-200/35 dark:bg-slate-100/85 ${
+                              share.allowDownload ? "translate-x-5" : "translate-x-0"
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </article>
                 );

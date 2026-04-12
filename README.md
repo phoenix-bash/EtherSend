@@ -1,6 +1,6 @@
-# LinkForge
+# EtherSend
 
-LinkForge is a cloud-ready media and persistent-link control platform foundation.
+EtherSend is a cloud-ready media and persistent-link control platform foundation.
 
 ## Stack
 
@@ -50,6 +50,26 @@ LinkForge is a cloud-ready media and persistent-link control platform foundation
    - `pnpm dev`
 6. Optional: run cleanup worker:
    - `pnpm --filter @linkforge/backend worker:cleanup`
+
+## Local HTTPS (Self-Signed)
+
+To run EtherSend behind local TLS with a self-signed certificate:
+
+1. Start the project (HTTP app services on ports 3000/4000):
+   - `bash start_project.sh`
+2. Start local TLS proxy (generates cert if missing):
+   - `bash deploy/nginx/start_local_https.sh`
+3. Open:
+   - `https://localhost`
+
+Generated certificate files:
+
+- `deploy/nginx/certs/linkforge.local.crt`
+- `deploy/nginx/certs/linkforge.local.key`
+
+Stop only the TLS proxy:
+
+- `bash deploy/nginx/stop_local_https.sh`
 
 ## Notes
 

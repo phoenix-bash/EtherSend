@@ -39,7 +39,7 @@ export default function HomePage() {
 
   return (
     <ControlShell plainHeader searchPlaceholder="SEARCH ASSETS OR BATCHES...">
-      <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-5">
         <section className="flex flex-wrap items-start justify-between gap-4 md:items-end">
           <div>
             <h2 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">System Overview</h2>

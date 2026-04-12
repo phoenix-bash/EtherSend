@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ImagePlus } from "lucide-react";
-import { ApiError, API_BASE_URL, uploadMedia } from "../../lib/api-client";
+import { useRouter } from "next/navigation";
+import { ApiError, uploadMedia } from "../../lib/api-client";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT, SYSTEM_LOG_EVENT } from "../../lib/events";
 import { useAuthSession } from "../../hooks/use-auth-session";
+import { clearPendingUploads, consumePendingUploads, hasPendingUploads, queuePendingUploads } from "../../lib/pending-upload-store";
 
 interface UploadedMediaEntry {
   id: string;
@@ -12,64 +14,30 @@ interface UploadedMediaEntry {
   expiresAt: string | null;
 }
 
-function oauthStartUrl(provider: "google" | "github"): string {
-  const query = new URLSearchParams({
-    mode: "token",
-    redirectPath: "/auth/callback"
-  });
+const GUEST_UPLOAD_CHOICE_KEY = "ethersend:guest-upload-choice";
+const GUEST_CONTINUE_CHOICE = "continue";
+const GUEST_MAX_FILES_PER_BATCH = 5;
 
-  return `${API_BASE_URL}/auth/${provider}/start?${query.toString()}`;
-}
-
-function openOAuthPopup(provider: "google" | "github"): void {
-  const popup = window.open(
-    oauthStartUrl(provider),
-    "linkforge-auth",
-    "width=520,height=720,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes"
-  );
-
-  if (!popup) {
-    window.location.href = oauthStartUrl(provider);
+function hasGuestChosenContinue(): boolean {
+  if (typeof window === "undefined") {
+    return false;
   }
+
+  return window.localStorage.getItem(GUEST_UPLOAD_CHOICE_KEY) === GUEST_CONTINUE_CHOICE;
 }
 
 export function MediaUploader() {
-  const { user, refresh } = useAuthSession();
+  const router = useRouter();
+  const { user, loading } = useAuthSession();
   const [progress, setProgress] = useState(0);
   const [uploadedMedia, setUploadedMedia] = useState<UploadedMediaEntry[]>([]);
   const [status, setStatus] = useState<string>("Upload media files. Create direct links from Media Manager.");
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-
-  useEffect(() => {
-    function onMessage(event: MessageEvent): void {
-      if (event.origin !== window.location.origin) {
-        return;
-      }
-
-      const payload = event.data as { type?: string } | null;
-      if (payload?.type === "linkforge:auth-success") {
-        void refresh();
-        setShowLoginPrompt(false);
-        setStatus("Signed in. Your next uploads will use signed-in policy.");
-        window.dispatchEvent(
-          new CustomEvent(SYSTEM_LOG_EVENT, {
-            detail: { message: "Authentication gateway accepted the current session.", level: "success" }
-          })
-        );
-      }
-    }
-
-    window.addEventListener("message", onMessage);
-    return () => {
-      window.removeEventListener("message", onMessage);
-    };
-  }, [refresh]);
 
   useEffect(() => {
     function onSignedOut(): void {
       setUploadedMedia([]);
       setProgress(0);
-      setShowLoginPrompt(false);
+      clearPendingUploads();
       setStatus("Upload media files. Create direct links from Media Manager.");
     }
 
@@ -80,57 +48,132 @@ export function MediaUploader() {
     };
   }, []);
 
-  async function onUpload(file: File | null): Promise<void> {
-    if (!file) {
-      return;
-    }
+  const performUploadBatch = useCallback(
+    async (files: File[]): Promise<void> => {
+      if (files.length === 0) {
+        return;
+      }
 
-    if (!user) {
-      setShowLoginPrompt(true);
-    }
+      const uploadedEntries: UploadedMediaEntry[] = [];
 
-    setProgress(20);
-    setStatus("Uploading media...");
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        const progressValue = Math.round((index / files.length) * 100);
+        setProgress(progressValue);
+        setStatus(`Uploading ${index + 1}/${files.length}: ${file.name}`);
 
-    try {
-      const uploadResult = await uploadMedia(file);
-      window.dispatchEvent(new CustomEvent(MEDIA_UPLOADED_EVENT, { detail: { media: uploadResult.media } }));
-      window.dispatchEvent(new Event(MEDIA_LIBRARY_CHANGED_EVENT));
-      window.dispatchEvent(
-        new CustomEvent(SYSTEM_LOG_EVENT, {
-          detail: { message: `Media uploaded: ${uploadResult.media.filename}.`, level: "success" }
-        })
-      );
-      setUploadedMedia((current) => [
-        ...current,
-        {
-          id: uploadResult.media.id,
-          filename: uploadResult.media.filename,
-          expiresAt: uploadResult.media.expiresAt ?? null
+        try {
+          const uploadResult = await uploadMedia(file);
+          window.dispatchEvent(new CustomEvent(MEDIA_UPLOADED_EVENT, { detail: { media: uploadResult.media } }));
+          window.dispatchEvent(new Event(MEDIA_LIBRARY_CHANGED_EVENT));
+          window.dispatchEvent(
+            new CustomEvent(SYSTEM_LOG_EVENT, {
+              detail: { message: `Media uploaded: ${uploadResult.media.filename}.`, level: "success" }
+            })
+          );
+
+          uploadedEntries.push({
+            id: uploadResult.media.id,
+            filename: uploadResult.media.filename,
+            expiresAt: uploadResult.media.expiresAt ?? null
+          });
+        } catch (error) {
+          if (error instanceof ApiError) {
+            if (!user && (error.status === 401 || error.status === 403 || error.status === 413 || error.status === 429)) {
+              const uploadedCount = uploadedEntries.length;
+              setProgress(uploadedCount > 0 ? 100 : 0);
+              setStatus(
+                uploadedCount > 0
+                  ? `Uploaded ${uploadedCount}/${files.length}. Guest policy limit reached for remaining files.`
+                  : "Guest upload policy limit reached. Sign in for higher limits."
+              );
+              window.dispatchEvent(
+                new CustomEvent(SYSTEM_LOG_EVENT, {
+                  detail: { message: "Guest upload reached policy limits.", level: "warning" }
+                })
+              );
+              break;
+            }
+
+            if (user && (error.status === 401 || error.status === 403)) {
+              queuePendingUploads(files.slice(index));
+              setStatus("Please sign in to continue uploading.");
+              router.push("/auth/signin?source=upload&returnTo=/");
+              window.dispatchEvent(
+                new CustomEvent(SYSTEM_LOG_EVENT, {
+                  detail: { message: "Upload requires authentication.", level: "warning" }
+                })
+              );
+              return;
+            }
+          }
+
+          window.dispatchEvent(
+            new CustomEvent(SYSTEM_LOG_EVENT, {
+              detail: { message: `Upload failed for ${file.name}.`, level: "warning" }
+            })
+          );
         }
-      ]);
-      setProgress(100);
-      setStatus(user ? "Upload complete. Create direct links from Media Manager." : "Guest upload complete. Create direct links from Media Manager.");
-    } catch (error) {
-      setProgress(0);
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        setShowLoginPrompt(true);
-        setStatus("You can continue as guest with limits, or sign in for full access.");
-        window.dispatchEvent(
-          new CustomEvent(SYSTEM_LOG_EVENT, {
-            detail: { message: "Upload requires authentication or available guest capacity.", level: "warning" }
-          })
+      }
+
+      if (uploadedEntries.length > 0) {
+        setUploadedMedia((current) => [...uploadedEntries, ...current]);
+        setProgress(100);
+        setStatus(
+          uploadedEntries.length === files.length
+            ? `Uploaded ${uploadedEntries.length} file${uploadedEntries.length === 1 ? "" : "s"}.`
+            : `Uploaded ${uploadedEntries.length}/${files.length} file${files.length === 1 ? "" : "s"}.`
         );
         return;
       }
 
-      setStatus("Failed to upload media. Please try again.");
-      window.dispatchEvent(
-        new CustomEvent(SYSTEM_LOG_EVENT, {
-          detail: { message: "Upload failed due to a network or policy issue.", level: "warning" }
-        })
-      );
+      setProgress(0);
+      setStatus("Failed to upload selected files. Please try again.");
+    },
+    [router, user]
+  );
+
+  useEffect(() => {
+    if (loading) {
+      return;
     }
+
+    if (!hasPendingUploads()) {
+      return;
+    }
+
+    if (!user && !hasGuestChosenContinue()) {
+      return;
+    }
+
+    const queuedFiles = consumePendingUploads();
+    if (queuedFiles.length === 0) {
+      return;
+    }
+
+    void performUploadBatch(queuedFiles);
+  }, [loading, performUploadBatch, user]);
+
+  async function onUpload(files: File[]): Promise<void> {
+    if (files.length === 0) {
+      return;
+    }
+
+    const allowedFiles = !user ? files.slice(0, GUEST_MAX_FILES_PER_BATCH) : files;
+    const skippedByCount = files.length - allowedFiles.length;
+
+    if (skippedByCount > 0) {
+      setStatus(`Guest policy allows up to ${GUEST_MAX_FILES_PER_BATCH} files at once. Uploading first ${allowedFiles.length}.`);
+    }
+
+    if (!user && !hasGuestChosenContinue()) {
+      queuePendingUploads(allowedFiles);
+      setStatus("Redirecting to login. Your selected files are saved.");
+      router.push("/auth/signin?source=upload&returnTo=/");
+      return;
+    }
+
+    await performUploadBatch(allowedFiles);
   }
 
   return (
@@ -149,11 +192,11 @@ export function MediaUploader() {
 
         <input
           type="file"
-          accept="image/*,video/*,audio/*,.pdf"
+          multiple
           className="hidden"
           onChange={(event) => {
-            const file = event.target.files?.[0] ?? null;
-            void onUpload(file);
+            const files = Array.from(event.target.files ?? []);
+            void onUpload(files);
             event.target.value = "";
           }}
         />
@@ -177,44 +220,6 @@ export function MediaUploader() {
                 </li>
               ))}
             </ul>
-          </div>
-        ) : null}
-
-        {showLoginPrompt && !user ? (
-          <div className="mt-4 rounded-lg border border-outline-variant/20 bg-surface-container p-4">
-            <p className="text-sm font-semibold text-on-surface">Continue as guest or sign in</p>
-            <p className="mt-1 text-xs text-on-surface-variant">
-              Guest mode works with policy limits (10-minute validity). Sign in for longer validity and account features.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-xs font-label uppercase tracking-wider text-on-surface transition-all hover:text-primary"
-                onClick={() => {
-                  openOAuthPopup("google");
-                }}
-              >
-                Sign in with Google
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-xs font-label uppercase tracking-wider text-on-surface transition-all hover:text-primary"
-                onClick={() => {
-                  openOAuthPopup("github");
-                }}
-              >
-                Sign in with GitHub
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2 text-xs font-label uppercase tracking-wider text-on-surface-variant transition-all hover:text-on-surface"
-                onClick={() => {
-                  setShowLoginPrompt(false);
-                }}
-              >
-                Continue as guest
-              </button>
-            </div>
           </div>
         ) : null}
       </div>

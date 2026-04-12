@@ -21,14 +21,14 @@ export function PublicLanding({ onContinueAsGuest }: PublicLandingProps) {
   }
 
   return (
-    <div className="relative min-h-screen bg-background text-on-surface">
+    <div className="glass-site relative min-h-screen bg-background text-on-surface">
       <div className="pointer-events-none absolute inset-0 mesh-gradient opacity-90" aria-hidden="true"></div>
 
       <div className="relative z-10">
         <header className="sticky top-0 z-30 border-b border-outline-variant/20 bg-surface-container-low/80 backdrop-blur-2xl">
           <div className="mx-auto flex w-full max-w-[1320px] items-center justify-between px-5 py-4 md:px-8">
             <Link href="/" className="font-headline text-xl font-extrabold uppercase tracking-tight text-on-surface">
-              LinkForge
+              EtherSend
             </Link>
 
             <nav className="hidden items-center gap-6 md:flex">
@@ -66,7 +66,7 @@ export function PublicLanding({ onContinueAsGuest }: PublicLandingProps) {
             <div className="grid gap-8 xl:grid-cols-[1.3fr_1fr] xl:items-center">
               <div>
                 <h1 className="bg-gradient-to-br from-on-surface via-on-surface to-on-surface-variant bg-clip-text font-headline text-4xl font-extrabold leading-tight tracking-tighter text-transparent md:text-6xl">
-                  LinkForge: Media Hosting with Surgical Control
+                  EtherSend: Media Hosting with Surgical Control
                 </h1>
                 <p className="mt-4 max-w-2xl text-base text-on-surface-variant md:text-lg">
                   Direct links. Batch shares. Expiry policies. Guest-friendly. Secure your assets with architectural precision.
@@ -82,7 +82,7 @@ export function PublicLanding({ onContinueAsGuest }: PublicLandingProps) {
                   <div className="p-6 font-mono text-sm">
                     <div className="flex gap-3">
                       <span className="text-primary/50">$</span>
-                      <span className="text-on-surface">linkforge media upload --secure --expiry 7d</span>
+                      <span className="text-on-surface">ethersend media upload --secure --expiry 7d</span>
                     </div>
                     <div className="mt-2 flex gap-3 text-on-surface-variant">
                       <span className="opacity-0">$</span>
@@ -151,7 +151,7 @@ export function PublicLanding({ onContinueAsGuest }: PublicLandingProps) {
             <article id="docs" className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-6">
               <p className="text-[10px] font-label uppercase tracking-[0.2em] text-primary">Developer First</p>
               <h3 className="mt-3 font-headline text-2xl font-bold text-on-surface">CLI and API ready.</h3>
-              <p className="mt-3 text-sm text-on-surface-variant">Integrate LinkForge into internal tools, pipelines, and customer-facing products without changing your architecture.</p>
+              <p className="mt-3 text-sm text-on-surface-variant">Integrate EtherSend into internal tools, pipelines, and customer-facing products without changing your architecture.</p>
             </article>
           </section>
         </main>
@@ -159,7 +159,9 @@ export function PublicLanding({ onContinueAsGuest }: PublicLandingProps) {
         <footer className="border-t border-outline-variant/20 bg-surface-container-low/65">
           <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-4 px-5 py-8 md:flex-row md:items-center md:justify-between md:px-8">
             <div>
-              <p className="font-headline text-lg font-bold uppercase tracking-tight text-on-surface">LinkForge</p>
+              <Link href="/" className="font-headline text-lg font-bold uppercase tracking-tight text-on-surface">
+                EtherSend
+              </Link>
               <p className="mt-1 text-xs text-on-surface-variant">Asset intelligence platform for modern media operations.</p>
             </div>
 

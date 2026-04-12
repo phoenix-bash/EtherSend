@@ -5,6 +5,13 @@ function trimTrailingSlashes(value: string): string {
 function resolveApiBaseUrl(): string {
   const envBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
   if (typeof window !== "undefined") {
+    const isLocalHost =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "::1" ||
+      window.location.hostname === "[::1]";
+    const isStandardPort = !window.location.port || window.location.port === "80" || window.location.port === "443";
+
     if (envBaseUrl) {
       try {
         const parsed = new URL(envBaseUrl);
@@ -24,6 +31,15 @@ function resolveApiBaseUrl(): string {
       return trimTrailingSlashes(envBaseUrl);
     }
 
+    // When served through a reverse proxy (including local HTTPS), stay on same-origin /api.
+    if (isStandardPort) {
+      return `${window.location.origin}/api`;
+    }
+
+    if (isLocalHost) {
+      return `${window.location.protocol}//${window.location.hostname}:4000`;
+    }
+
     return `${window.location.protocol}//${window.location.hostname}:4000`;
   }
 
@@ -40,10 +56,12 @@ const ACCESS_TOKEN_KEY = "lf_access_token";
 
 export class ApiError extends Error {
   status: number;
+  details?: unknown;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, details?: unknown) {
     super(message);
     this.status = status;
+    this.details = details;
     this.name = "ApiError";
   }
 }
@@ -55,6 +73,17 @@ export interface AuthUser {
   role: "ADMIN" | "USER";
 }
 
+export interface EmailAuthResult {
+  user: AuthUser;
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface EmailSignupResult {
+  ok: boolean;
+  requiresVerification: boolean;
+}
+
 export interface AccountInfo {
   id: string;
   email: string;
@@ -64,6 +93,20 @@ export interface AccountInfo {
   planName?: string | null;
   planValidUntil?: string | null;
   defaultMediaValidityEndsAt: string;
+}
+
+export interface ActiveSessionItem {
+  id: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  browser?: string | null;
+  os?: string | null;
+  deviceType?: string | null;
+  deviceModel?: string | null;
+  createdAt: string;
+  lastActivityAt: string;
+  expiresAt: string;
+  current: boolean;
 }
 
 export interface MediaItem {
@@ -246,8 +289,12 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   });
 
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new ApiError(response.status, payload?.error ?? `API request failed with status ${response.status}`);
+    const payload = (await response.json().catch(() => null)) as { error?: string; details?: unknown } | null;
+    throw new ApiError(
+      response.status,
+      payload?.error ?? `API request failed with status ${response.status}`,
+      payload?.details
+    );
   }
 
   if (response.status === 204) {
@@ -274,6 +321,44 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
   }
 }
 
+export function signupWithEmail(input: { email: string; password: string; name?: string }): Promise<EmailSignupResult> {
+  return apiRequest<EmailSignupResult>("/auth/signup", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function signinWithEmail(input: { email: string; password: string }): Promise<EmailAuthResult> {
+  const result = await apiRequest<EmailAuthResult>("/auth/signin", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+
+  setAccessToken(result.accessToken);
+  return result;
+}
+
+export function verifyEmailToken(token: string): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ token })
+  });
+}
+
+export function requestPasswordReset(email: string): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email })
+  });
+}
+
+export function resetPasswordWithToken(input: { token: string; password: string }): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
 export async function fetchAccountInfo(): Promise<AccountInfo | null> {
   if (!getUsableAccessToken()) {
     return null;
@@ -289,6 +374,23 @@ export async function fetchAccountInfo(): Promise<AccountInfo | null> {
 
     return null;
   }
+}
+
+export function listActiveSessions(): Promise<{ items: ActiveSessionItem[] }> {
+  return apiRequest<{ items: ActiveSessionItem[] }>("/auth/sessions");
+}
+
+export function revokeActiveSession(sessionId: string): Promise<{ ok: boolean; currentSessionRevoked: boolean }> {
+  return apiRequest<{ ok: boolean; currentSessionRevoked: boolean }>(`/auth/sessions/${sessionId}`, {
+    method: "DELETE"
+  });
+}
+
+export function deleteAccountPermanently(confirmation: string): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>("/auth/account", {
+    method: "DELETE",
+    body: JSON.stringify({ confirmation })
+  });
 }
 
 async function uploadFile(path: string, file: File): Promise<{ media: MediaItem }> {

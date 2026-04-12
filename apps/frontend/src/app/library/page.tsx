@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ControlShell } from "../../components/control-shell";
 import {
   absoluteApiUrl,
@@ -96,12 +97,25 @@ function isMobileDevice(): boolean {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
+function normalizeQueryValue(value: string | null): string {
+  if (!value) {
+    return "";
+  }
+
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 export default function MediaLibraryPage() {
+  const searchParams = useSearchParams();
+  const mediaIdFromQuery = searchParams.get("mediaId");
+  const queryFilter = normalizeQueryValue(searchParams.get("q"));
+
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("Loading uploaded media...");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [filter, setFilter] = useState<MediaFilter>("all");
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
@@ -110,6 +124,7 @@ export default function MediaLibraryPage() {
   const [propertiesItem, setPropertiesItem] = useState<MediaItem | null>(null);
   const [selectedReplaceId, setSelectedReplaceId] = useState<string | null>(null);
   const [directLinks, setDirectLinks] = useState<Record<string, string>>({});
+  const [focusedMediaHandled, setFocusedMediaHandled] = useState(false);
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
 
   async function refreshMedia(): Promise<void> {
@@ -164,12 +179,17 @@ export default function MediaLibraryPage() {
   }, []);
 
   const filteredItems = useMemo(() => {
-    if (filter === "all") {
-      return items;
+    const base = filter === "all" ? items : items.filter((item) => classifyMedia(item) === filter);
+    if (!queryFilter) {
+      return base;
     }
 
-    return items.filter((item) => classifyMedia(item) === filter);
-  }, [items, filter]);
+    return base.filter((item) => `${item.filename} ${item.mimeType}`.toLowerCase().includes(queryFilter));
+  }, [items, filter, queryFilter]);
+
+  useEffect(() => {
+    setFocusedMediaHandled(false);
+  }, [mediaIdFromQuery]);
 
   useEffect(() => {
     if (!previewItem) {
@@ -180,6 +200,23 @@ export default function MediaLibraryPage() {
       setPreviewItem(null);
     }
   }, [items, previewItem]);
+
+  useEffect(() => {
+    if (!mediaIdFromQuery || focusedMediaHandled || loading) {
+      return;
+    }
+
+    const target = items.find((item) => item.id === mediaIdFromQuery);
+    if (target) {
+      setFocusedMediaHandled(true);
+      openPreview(target);
+      setStatus(`Opened ${target.filename} from search.`);
+      return;
+    }
+
+    setFocusedMediaHandled(true);
+    setStatus("Requested media item was not found.");
+  }, [focusedMediaHandled, items, loading, mediaIdFromQuery]);
 
   useEffect(() => {
     if (!previewItem) {
@@ -459,10 +496,13 @@ export default function MediaLibraryPage() {
   function renderActionsMenu(item: MediaItem) {
     const isImage = item.mimeType.startsWith("image/");
     return (
-      <div className="absolute right-0 top-10 z-20 min-w-[220px] rounded-md border border-outline-variant/20 bg-surface-container-low p-1 shadow-lg" onClick={(event) => event.stopPropagation()}>
+      <div
+        className="flex w-full flex-col gap-1 rounded-md border border-outline-variant/20 bg-surface-container-low p-1.5 shadow-lg"
+        onClick={(event) => event.stopPropagation()}
+      >
         <button
           type="button"
-          className="w-full rounded px-3 py-2 text-left text-xs text-on-surface transition-colors hover:bg-surface-container-high"
+          className="w-full rounded px-3 py-2.5 text-left text-xs leading-5 text-on-surface transition-colors hover:bg-surface-container-high"
           onClick={() => {
             openReplaceDialog(item);
           }}
@@ -470,26 +510,21 @@ export default function MediaLibraryPage() {
           Replace Media
         </button>
 
-        <button
-          type="button"
-          className={`w-full rounded px-3 py-2 text-left text-xs transition-colors ${
-            isImage
-              ? "text-on-surface hover:bg-surface-container-high"
-              : "cursor-not-allowed text-on-surface-variant"
-          }`}
-          onClick={() => {
-            if (isImage) {
+        {isImage ? (
+          <button
+            type="button"
+            className="w-full rounded px-3 py-2.5 text-left text-xs leading-5 text-on-surface transition-colors hover:bg-surface-container-high"
+            onClick={() => {
               void onGenerateDirectLink(item);
-            }
-          }}
-          disabled={!isImage}
-        >
-          {directLinks[item.id] ? "Copy Direct Link" : "Generate Direct Link (images only)"}
-        </button>
+            }}
+          >
+            {directLinks[item.id] ? "Copy Direct Link" : "Generate Direct Link"}
+          </button>
+        ) : null}
 
         <button
           type="button"
-          className="w-full rounded px-3 py-2 text-left text-xs text-on-surface transition-colors hover:bg-surface-container-high"
+          className="w-full rounded px-3 py-2.5 text-left text-xs leading-5 text-on-surface transition-colors hover:bg-surface-container-high"
           onClick={() => {
             void onToggleArchive(item);
           }}
@@ -499,7 +534,7 @@ export default function MediaLibraryPage() {
 
         <button
           type="button"
-          className="w-full rounded px-3 py-2 text-left text-xs text-on-surface transition-colors hover:bg-surface-container-high"
+          className="w-full rounded px-3 py-2.5 text-left text-xs leading-5 text-on-surface transition-colors hover:bg-surface-container-high"
           onClick={() => {
             onDownload(item);
           }}
@@ -509,7 +544,7 @@ export default function MediaLibraryPage() {
 
         <button
           type="button"
-          className="w-full rounded px-3 py-2 text-left text-xs text-on-surface transition-colors hover:bg-surface-container-high"
+          className="w-full rounded px-3 py-2.5 text-left text-xs leading-5 text-on-surface transition-colors hover:bg-surface-container-high"
           onClick={() => {
             setPropertiesItem(item);
             setOpenMenuId(null);
@@ -520,7 +555,7 @@ export default function MediaLibraryPage() {
 
         <button
           type="button"
-          className="w-full rounded px-3 py-2 text-left text-xs text-error transition-colors hover:bg-surface-container-high"
+          className="w-full rounded px-3 py-2.5 text-left text-xs leading-5 text-error transition-colors hover:bg-surface-container-high"
           onClick={() => {
             void onDeleteMedia(item);
           }}
@@ -540,64 +575,79 @@ export default function MediaLibraryPage() {
             <p className="mt-1 text-sm text-on-surface-variant">Browse uploaded media with quick actions and file-level properties.</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex gap-1 rounded-lg border border-outline-variant/15 bg-surface-container-low p-1">
-              {[
-                { value: "all", label: "All" },
-                { value: "image", label: "Images" },
-                { value: "video", label: "Videos" },
-                { value: "json", label: "JSON" },
-                { value: "other", label: "Other" }
-              ].map((option) => {
-                const active = filter === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => {
-                      setFilter(option.value as MediaFilter);
-                      setOpenMenuId(null);
-                    }}
-                    className={`rounded-md px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                      active
-                        ? "border border-primary/25 bg-primary/10 text-primary"
-                        : "text-on-surface-variant hover:text-on-surface"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex items-center gap-1 rounded-lg border border-outline-variant/15 bg-surface-container-low p-1">
+            <button
+              type="button"
+              onClick={() => setFilterPanelOpen((current) => !current)}
+              className={`grid h-9 w-9 place-items-center rounded-md transition-colors ${
+                filterPanelOpen
+                  ? "border border-primary/25 bg-primary/10 text-primary"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+              aria-label="Toggle file type filters"
+            >
+              <span className="material-symbols-outlined text-base">filter_alt</span>
+            </button>
 
-            <div className="flex gap-1 rounded-lg border border-outline-variant/15 bg-surface-container-low p-1">
-              <button
-                type="button"
-                onClick={() => setViewMode("grid")}
-                className={`rounded-md px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                  viewMode === "grid"
-                    ? "border border-primary/25 bg-primary/10 text-primary"
-                    : "text-on-surface-variant hover:text-on-surface"
-                }`}
-              >
-                Grid
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("list")}
-                className={`rounded-md px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                  viewMode === "list"
-                    ? "border border-primary/25 bg-primary/10 text-primary"
-                    : "text-on-surface-variant hover:text-on-surface"
-                }`}
-              >
-                List
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className={`grid h-9 w-9 place-items-center rounded-md transition-colors ${
+                viewMode === "grid"
+                  ? "border border-primary/25 bg-primary/10 text-primary"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+              aria-label="Grid view"
+            >
+              <span className="material-symbols-outlined text-base">grid_view</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={`grid h-9 w-9 place-items-center rounded-md transition-colors ${
+                viewMode === "list"
+                  ? "border border-primary/25 bg-primary/10 text-primary"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+              aria-label="List view"
+            >
+              <span className="material-symbols-outlined text-base">view_list</span>
+            </button>
           </div>
         </section>
 
-        <section className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-4 md:p-5">
+        <div className={`overflow-hidden transition-all duration-300 ${filterPanelOpen ? "mt-1 max-h-40 opacity-100" : "max-h-0 opacity-0"}`}>
+          <div className="flex flex-wrap gap-1 rounded-lg border border-outline-variant/15 bg-surface-container-low p-1.5">
+            {[
+              { value: "all", label: "All" },
+              { value: "image", label: "Images" },
+              { value: "video", label: "Videos" },
+              { value: "json", label: "JSON" },
+              { value: "other", label: "Other" }
+            ].map((option) => {
+              const active = filter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    setFilter(option.value as MediaFilter);
+                    setOpenMenuId(null);
+                  }}
+                  className={`rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                    active
+                      ? "border border-primary/25 bg-primary/10 text-primary"
+                      : "text-on-surface-variant hover:text-on-surface"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <section>
           <input
             ref={replaceInputRef}
             type="file"
@@ -611,28 +661,42 @@ export default function MediaLibraryPage() {
 
           <p className="mb-3 text-[10px] font-label uppercase tracking-wider text-on-surface-variant">{status}</p>
 
+          {queryFilter ? (
+            <p className="mb-3 text-[10px] font-label uppercase tracking-wider text-primary">Filtered by search: {searchParams.get("q")}</p>
+          ) : null}
+
           {loading ? <p className="text-sm text-on-surface-variant">Loading uploaded media...</p> : null}
 
-          {!loading && filteredItems.length === 0 ? <p className="text-sm text-on-surface-variant">No media in this filter yet.</p> : null}
+          {!loading && filteredItems.length === 0 && queryFilter ? <p className="text-sm text-on-surface-variant">No media matched this search.</p> : null}
+
+          {!loading && filteredItems.length === 0 && !queryFilter && filter === "all" ? <p className="text-sm text-on-surface-variant">No media in this filter yet.</p> : null}
 
           {!loading && filteredItems.length > 0 && viewMode === "grid" ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-              {filteredItems.map((item) => (
-                <article
-                  key={item.id}
-                  className="relative cursor-pointer rounded-xl border border-outline-variant/20 bg-surface-container p-3 transition-colors hover:bg-surface-container-high"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    openPreview(item);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-4">
+              {filteredItems.map((item) => {
+                const focusedBySuggestion = mediaIdFromQuery === item.id;
+                const menuOpen = openMenuId === item.id;
+
+                return (
+                  <article
+                    key={item.id}
+                    className={`relative cursor-pointer overflow-visible rounded-xl border bg-surface-container p-3 transition-colors hover:bg-surface-container-high ${
+                      menuOpen ? "z-40" : "z-0"
+                    } ${
+                      focusedBySuggestion ? "border-primary/35 shadow-[inset_0_0_0_1px_rgba(75,188,214,0.2)]" : "border-outline-variant/20"
+                    }`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
                       openPreview(item);
-                    }
-                  }}
-                >
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openPreview(item);
+                      }
+                    }}
+                  >
                   <div className="relative mb-3 aspect-[4/3] overflow-hidden rounded-lg border border-outline-variant/15 bg-surface-container-lowest">
                     {renderThumbnail(item)}
                     <div className="pointer-events-none absolute inset-x-2 bottom-2 flex items-center justify-between rounded-md bg-[rgb(10_14_20_/_0.62)] px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-white/90">
@@ -646,45 +710,56 @@ export default function MediaLibraryPage() {
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <p className="text-[10px] uppercase tracking-wider text-on-surface-variant">{item.isActive ? "Active" : "Archived"}</p>
 
-                    <div className="relative z-30">
+                    <div className="z-30">
                       <button
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
                           setOpenMenuId((current) => (current === item.id ? null : item.id));
                         }}
-                        className="rounded-md border border-outline-variant/20 bg-surface-container-low/95 p-1.5 text-on-surface-variant backdrop-blur transition-colors hover:text-on-surface"
+                        className="grid h-8 w-8 place-items-center rounded-full border border-outline-variant/20 bg-surface-container-low/95 text-on-surface-variant backdrop-blur transition-colors hover:text-on-surface"
                         aria-label="Open media actions"
                       >
                         <span className="material-symbols-outlined text-base">more_horiz</span>
                       </button>
-
-                      {openMenuId === item.id ? renderActionsMenu(item) : null}
                     </div>
                   </div>
+
+                  {openMenuId === item.id ? (
+                    <div className="absolute left-0 right-0 top-[calc(100%+0.55rem)] z-[80]">{renderActionsMenu(item)}</div>
+                  ) : null}
                 </article>
-              ))}
+                );
+              })}
             </div>
           ) : null}
 
           {!loading && filteredItems.length > 0 && viewMode === "list" ? (
             <div className="space-y-2">
-              {filteredItems.map((item) => (
-                <article
-                  key={item.id}
-                  className="relative flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-outline-variant/20 bg-surface-container px-4 py-3 transition-colors hover:bg-surface-container-high"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    openPreview(item);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
+              {filteredItems.map((item) => {
+                const focusedBySuggestion = mediaIdFromQuery === item.id;
+                const menuOpen = openMenuId === item.id;
+
+                return (
+                  <article
+                    key={item.id}
+                    className={`relative flex cursor-pointer items-center justify-between gap-4 overflow-visible rounded-lg border bg-surface-container px-4 py-3 transition-colors hover:bg-surface-container-high ${
+                      menuOpen ? "z-40" : "z-0"
+                    } ${
+                      focusedBySuggestion ? "border-primary/35 shadow-[inset_0_0_0_1px_rgba(75,188,214,0.2)]" : "border-outline-variant/20"
+                    }`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
                       openPreview(item);
-                    }
-                  }}
-                >
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openPreview(item);
+                      }
+                    }}
+                  >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-on-surface">{item.filename}</p>
                     <p className="mt-1 text-xs text-on-surface-variant">
@@ -700,16 +775,19 @@ export default function MediaLibraryPage() {
                         event.stopPropagation();
                         setOpenMenuId((current) => (current === item.id ? null : item.id));
                       }}
-                      className="rounded-md border border-outline-variant/20 bg-surface-container-low p-1.5 text-on-surface-variant transition-colors hover:text-on-surface"
+                      className="grid h-8 w-8 place-items-center rounded-full border border-outline-variant/20 bg-surface-container-low text-on-surface-variant transition-colors hover:text-on-surface"
                       aria-label="Open media actions"
                     >
                       <span className="material-symbols-outlined text-base">more_horiz</span>
                     </button>
-
-                    {openMenuId === item.id ? renderActionsMenu(item) : null}
                   </div>
+
+                  {openMenuId === item.id ? (
+                    <div className="absolute left-0 right-0 top-[calc(100%+0.55rem)] z-[80]">{renderActionsMenu(item)}</div>
+                  ) : null}
                 </article>
-              ))}
+                );
+              })}
             </div>
           ) : null}
         </section>

@@ -18,7 +18,7 @@ export function DashboardHeader() {
       className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-border bg-card/90 p-4 shadow-lift md:p-6"
     >
       <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-accent">LinkForge Control Plane</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-accent">EtherSend Control Plane</p>
         <h1 className="text-2xl font-semibold md:text-3xl">Persistent Media & Link HOME</h1>
       </div>
 

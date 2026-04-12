@@ -147,19 +147,19 @@ export function OverviewCards() {
   const ttlLabel = useMemo(() => formatTtl(overview?.nearestBatchExpiryAt ?? null, nowMs), [overview?.nearestBatchExpiryAt, nowMs]);
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-6 lg:grid-cols-4">
       <motion.article
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="group flex items-center justify-between rounded-xl border border-outline-variant/15 bg-surface-container-low p-6 transition-all hover:border-primary/20"
+        className="group flex items-start justify-between rounded-lg border border-outline-variant/15 bg-surface-container-low p-3 transition-all hover:border-primary/20 sm:rounded-xl sm:p-4 md:p-6"
       >
         <div>
-          <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Remaining Storage</p>
-          <h3 className="mt-1 font-headline text-2xl font-bold text-on-surface">{remainingStorageLabel}</h3>
-          <p className="mt-1 text-[10px] font-label text-primary">{usedVsCapLabel}</p>
+          <p className="text-[9px] font-label uppercase tracking-wider text-on-surface-variant sm:text-[10px] sm:tracking-widest">Remaining Storage</p>
+          <h3 className="mt-1 font-headline text-base font-bold text-on-surface sm:text-lg md:text-2xl">{remainingStorageLabel}</h3>
+          <p className="mt-1 text-[9px] font-label text-primary sm:text-[10px]">{usedVsCapLabel}</p>
         </div>
-        <div className="relative h-16 w-16">
+        <div className="relative h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16">
           <svg className="h-full w-full" viewBox="0 0 36 36">
             <circle className="stroke-surface-container-high" cx="18" cy="18" fill="none" r="16" strokeWidth="3" />
             <circle
@@ -174,7 +174,7 @@ export function OverviewCards() {
               transform="rotate(-90 18 18)"
             />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-headline font-bold text-on-surface">{storagePercent}%</span>
+          <span className="absolute inset-0 flex items-center justify-center text-[9px] font-headline font-bold text-on-surface sm:text-[10px]">{storagePercent}%</span>
         </div>
       </motion.article>
 
@@ -182,49 +182,49 @@ export function OverviewCards() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.08, duration: 0.25 }}
-        className="group flex items-center justify-between rounded-xl border border-outline-variant/15 bg-surface-container-low p-6 transition-all hover:border-primary/20"
+        className="group flex items-start justify-between rounded-lg border border-outline-variant/15 bg-surface-container-low p-3 transition-all hover:border-primary/20 sm:rounded-xl sm:p-4 md:p-6"
       >
         <div>
-          <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Total Media</p>
-          <h3 className="mt-1 font-headline text-2xl font-bold text-on-surface">{overview ? overview.totalFiles : "-"}</h3>
-          <div className="mt-1 flex items-center gap-1 text-[10px] font-label text-primary">
+          <p className="text-[9px] font-label uppercase tracking-wider text-on-surface-variant sm:text-[10px] sm:tracking-widest">Total Media</p>
+          <h3 className="mt-1 font-headline text-base font-bold text-on-surface sm:text-lg md:text-2xl">{overview ? overview.totalFiles : "-"}</h3>
+          <div className="mt-1 flex items-center gap-1 text-[9px] font-label text-primary sm:text-[10px]">
             <span className="material-symbols-outlined text-xs">trending_up</span>
             <span>{overview ? `${overview.activeLinks} ACTIVE` : "-"}</span>
           </div>
         </div>
-        <span className="material-symbols-outlined text-4xl text-primary/35 transition-colors group-hover:text-primary">perm_media</span>
+        <span className="material-symbols-outlined text-2xl text-primary/35 transition-colors group-hover:text-primary sm:text-3xl md:text-4xl">perm_media</span>
       </motion.article>
 
       <motion.article
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.16, duration: 0.25 }}
-        className="group flex items-center justify-between rounded-xl border border-outline-variant/15 bg-surface-container-low p-6 transition-all hover:border-primary/20"
+        className="group flex items-start justify-between rounded-lg border border-outline-variant/15 bg-surface-container-low p-3 transition-all hover:border-primary/20 sm:rounded-xl sm:p-4 md:p-6"
       >
         <div>
-          <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Active Shares</p>
-          <h3 className="mt-1 font-headline text-2xl font-bold text-on-surface">{overview ? overview.activeShares : "-"}</h3>
-          <p className="mt-1 text-[10px] font-label uppercase text-tertiary">
+          <p className="text-[9px] font-label uppercase tracking-wider text-on-surface-variant sm:text-[10px] sm:tracking-widest">Active Shares</p>
+          <h3 className="mt-1 font-headline text-base font-bold text-on-surface sm:text-lg md:text-2xl">{overview ? overview.activeShares : "-"}</h3>
+          <p className="mt-1 text-[9px] font-label uppercase text-tertiary sm:text-[10px]">
             {overview ? `${Math.max(0, overview.totalFiles - overview.activeLinks)} archived` : "-"}
           </p>
         </div>
-        <span className="material-symbols-outlined text-4xl text-tertiary/35 transition-colors group-hover:text-tertiary">share</span>
+        <span className="material-symbols-outlined text-2xl text-tertiary/35 transition-colors group-hover:text-tertiary sm:text-3xl md:text-4xl">share</span>
       </motion.article>
 
       <motion.article
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.24, duration: 0.25 }}
-        className="group flex items-center justify-between rounded-xl border border-outline-variant/15 bg-surface-container-low p-6 transition-all hover:border-primary/20"
+        className="group flex items-start justify-between rounded-lg border border-outline-variant/15 bg-surface-container-low p-3 transition-all hover:border-primary/20 sm:rounded-xl sm:p-4 md:p-6"
       >
-        <div>
-          <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Media TTL</p>
-          <h3 className="mt-1 font-headline text-2xl font-bold text-on-surface">{ttlLabel}</h3>
-          <p className="mt-1 text-[10px] font-label uppercase text-error">
+        <div className="min-w-0">
+          <p className="text-[9px] font-label uppercase tracking-wider text-on-surface-variant sm:text-[10px] sm:tracking-widest">Media TTL</p>
+          <h3 className="mt-1 truncate font-headline text-[13px] font-bold text-on-surface sm:text-base md:text-2xl">{ttlLabel}</h3>
+          <p className="mt-1 truncate text-[9px] font-label uppercase text-error sm:text-[10px]">
             {overview?.nearestBatchName ? `Batch: ${overview.nearestBatchName}` : "No active batch expiry"}
           </p>
         </div>
-        <span className="material-symbols-outlined text-4xl text-error/35 transition-colors group-hover:text-error">timer</span>
+        <span className="material-symbols-outlined text-2xl text-error/35 transition-colors group-hover:text-error sm:text-3xl md:text-4xl">timer</span>
       </motion.article>
     </div>
   );

@@ -1,29 +1,75 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { prisma } from "../config/prisma.js";
+
+interface JwtPayload {
+  sub: string;
+  role: "ADMIN" | "USER";
+  email: string;
+  sid: string;
+}
+
+async function isSessionActive(payload: JwtPayload): Promise<boolean> {
+  if (!payload.sid) {
+    return false;
+  }
+
+  const session = await prisma.loginSession.findUnique({
+    where: {
+      id: payload.sid
+    },
+    select: {
+      userId: true,
+      revokedAt: true,
+      expiresAt: true
+    }
+  });
+
+  if (!session) {
+    return false;
+  }
+
+  if (session.userId !== payload.sub) {
+    return false;
+  }
+
+  if (session.revokedAt) {
+    return false;
+  }
+
+  return session.expiresAt.getTime() > Date.now();
+}
 
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   try {
     await request.jwtVerify();
+    const payload = request.user as JwtPayload;
+    if (await isSessionActive(payload)) {
+      return;
+    }
   } catch {
-    const cookieToken = request.cookies?.lf_access_token;
+    // Fall through to cookie token fallback.
+  }
 
-    if (cookieToken) {
-      try {
-        const payload = request.server.jwt.verify(cookieToken) as {
-          sub: string;
-          role: "ADMIN" | "USER";
-          email: string;
-        };
+  const cookieToken = request.cookies?.lf_access_token;
 
-        (request as FastifyRequest & { user: typeof payload }).user = payload;
-        return;
-      } catch {
+  if (cookieToken) {
+    try {
+      const payload = request.server.jwt.verify(cookieToken) as JwtPayload;
+
+      if (!(await isSessionActive(payload))) {
         reply.status(401).send({ error: "Unauthorized" });
         return;
       }
-    }
 
-    reply.status(401).send({ error: "Unauthorized" });
+      (request as FastifyRequest & { user: JwtPayload }).user = payload;
+      return;
+    } catch {
+      reply.status(401).send({ error: "Unauthorized" });
+      return;
+    }
   }
+
+  reply.status(401).send({ error: "Unauthorized" });
 }
 
 export function requireRole(roles: Array<"ADMIN" | "USER">) {

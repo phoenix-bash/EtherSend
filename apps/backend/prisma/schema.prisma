@@ -15,6 +15,7 @@ enum UserRole {
 enum AuthProvider {
   GOOGLE
   GITHUB
+  EMAIL
 }
 
 enum MediaDisposition {
@@ -42,6 +43,13 @@ model User {
   id           String   @id @default(uuid())
   email        String   @unique
   name         String?
+  passwordHash String?
+  passwordResetRequiredAt DateTime?
+  emailVerifiedAt DateTime?
+  emailVerificationTokenHash String? @unique
+  emailVerificationTokenExpiresAt DateTime?
+  passwordResetTokenHash String? @unique
+  passwordResetTokenExpiresAt DateTime?
   role         UserRole @default(USER)
   accountType  AccountType @default(FREE_6M)
   planName     String?
@@ -50,9 +58,35 @@ model User {
   updatedAt    DateTime @updatedAt
 
   identities   UserIdentity[]
+  loginSessions LoginSession[]
   mediaFiles   MediaFile[]
   mediaBatches MediaBatch[]
   claimedMedia MediaFile[] @relation("claimedBy")
+}
+
+model LoginSession {
+  id              String   @id @default(uuid())
+  userId          String
+  refreshTokenHash String   @unique
+  ipAddress       String?
+  userAgent       String?
+  browser         String?
+  os              String?
+  deviceType      String?
+  deviceModel     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastActivityAt  DateTime @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  revokeReason    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@index([userId, revokedAt])
 }
 
 model UserIdentity {

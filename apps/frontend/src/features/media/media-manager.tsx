@@ -47,11 +47,12 @@ function shortenIdentifier(identifier: string): string {
 
 export function MediaManager() {
   const [items, setItems] = useState<MediaItem[]>([]);
-  const [status, setStatus] = useState("Loading media...");
+  const [status, setStatus] = useState("");
   const [selectedReplaceId, setSelectedReplaceId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [batchName, setBatchName] = useState("");
   const [batchAllowDownload, setBatchAllowDownload] = useState(false);
+  const [batchShareAll, setBatchShareAll] = useState(false);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [batchShareUrl, setBatchShareUrl] = useState<string | null>(null);
   const [batchShareExpiresAt, setBatchShareExpiresAt] = useState<string | null>(null);
@@ -71,7 +72,7 @@ export function MediaManager() {
     try {
       const response = await listMedia();
       setItems(response.items);
-      setStatus("Media loaded.");
+      setStatus("");
     } catch {
       setStatus("Failed to load media. Sign in first.");
       setItems([]);
@@ -91,19 +92,20 @@ export function MediaManager() {
       }
 
       setItems((current) => [media, ...current.filter((item) => item.id !== media.id)]);
-      setStatus("Media updated from upload.");
+      setStatus("");
     }
 
     function onSignedOut(): void {
       setItems([]);
       setSelectedIds([]);
+      setBatchShareAll(false);
       setSelectedReplaceId(null);
       setBatchId(null);
       setBatchShareUrl(null);
       setBatchShareExpiresAt(null);
       setDirectLinks({});
       setGeneratedLinkQr(null);
-      setStatus("Signed out. HOME cleared.");
+      setStatus("");
     }
 
     window.addEventListener(MEDIA_UPLOADED_EVENT, onMediaUploaded);
@@ -116,28 +118,40 @@ export function MediaManager() {
   }, []);
 
   async function toggleActive(item: MediaItem): Promise<void> {
-    await toggleMedia(item.id, { isActive: !item.isActive });
-    await refreshMedia();
-    emitLibraryChange();
-    emitSystemLog(item.isActive ? `Media archived: ${item.filename}.` : `Media re-activated: ${item.filename}.`, item.isActive ? "warning" : "success");
+    try {
+      await toggleMedia(item.id, { isActive: !item.isActive });
+      await refreshMedia();
+      emitLibraryChange();
+      emitSystemLog(item.isActive ? `Media archived: ${item.filename}.` : `Media re-activated: ${item.filename}.`, item.isActive ? "warning" : "success");
+    } catch {
+      setStatus(`Failed to update status for ${item.filename}.`);
+    }
   }
 
   async function toggleDownload(item: MediaItem): Promise<void> {
-    await toggleMedia(item.id, { allowDownload: !item.allowDownload });
-    await refreshMedia();
-    emitLibraryChange();
-    emitSystemLog(
-      item.allowDownload ? `Download disabled for ${item.filename}.` : `Download enabled for ${item.filename}.`,
-      item.allowDownload ? "warning" : "success"
-    );
+    try {
+      await toggleMedia(item.id, { allowDownload: !item.allowDownload });
+      await refreshMedia();
+      emitLibraryChange();
+      emitSystemLog(
+        item.allowDownload ? `Download disabled for ${item.filename}.` : `Download enabled for ${item.filename}.`,
+        item.allowDownload ? "warning" : "success"
+      );
+    } catch {
+      setStatus(`Failed to update download policy for ${item.filename}.`);
+    }
   }
 
   async function removeItem(item: MediaItem): Promise<void> {
-    await deleteMedia(item.id);
-    setSelectedIds((prev) => prev.filter((id) => id !== item.id));
-    await refreshMedia();
-    emitLibraryChange();
-    emitSystemLog(`Media deleted: ${item.filename}.`, "warning");
+    try {
+      await deleteMedia(item.id);
+      setSelectedIds((prev) => prev.filter((id) => id !== item.id));
+      await refreshMedia();
+      emitLibraryChange();
+      emitSystemLog(`Media deleted: ${item.filename}.`, "warning");
+    } catch {
+      setStatus(`Failed to delete ${item.filename}.`);
+    }
   }
 
   async function onReplacePicked(file: File | null): Promise<void> {
@@ -145,11 +159,15 @@ export function MediaManager() {
       return;
     }
 
-    await replaceMedia(selectedReplaceId, file);
-    setSelectedReplaceId(null);
-    await refreshMedia();
-    emitLibraryChange();
-    emitSystemLog(`Media replaced successfully.`, "success");
+    try {
+      await replaceMedia(selectedReplaceId, file);
+      setSelectedReplaceId(null);
+      await refreshMedia();
+      emitLibraryChange();
+      emitSystemLog(`Media replaced successfully.`, "success");
+    } catch {
+      setStatus("Failed to replace media.");
+    }
   }
 
   function asMegabytes(sizeBytes: string): string {
@@ -162,31 +180,35 @@ export function MediaManager() {
   }
 
   async function generateOrCopyDirectLink(item: MediaItem): Promise<void> {
-    const existing = directLinks[item.id];
-    if (existing) {
-      await navigator.clipboard.writeText(existing.url);
-      setStatus("Direct link copied.");
-      emitSystemLog(`Direct link copied for ${item.filename}.`);
-      return;
-    }
-
-    const created = await createImageLink(item.id);
-    const url = absoluteApiUrl(created.directUrl);
-    setDirectLinks((prev) => ({
-      ...prev,
-      [item.id]: {
-        url,
-        expiresAt: created.link.expiresAt
+    try {
+      const existing = directLinks[item.id];
+      if (existing) {
+        await navigator.clipboard.writeText(existing.url);
+        setStatus("");
+        emitSystemLog(`Direct link copied for ${item.filename}.`);
+        return;
       }
-    }));
-    setGeneratedLinkQr({
-      url,
-      label: `Direct link for ${item.filename}`,
-      expiresAt: created.link.expiresAt
-    });
-    await navigator.clipboard.writeText(url);
-    setStatus("Direct link generated and copied.");
-    emitSystemLog(`Direct link generated for ${item.filename}.`, "success");
+
+      const created = await createImageLink(item.id);
+      const url = absoluteApiUrl(created.directUrl);
+      setDirectLinks((prev) => ({
+        ...prev,
+        [item.id]: {
+          url,
+          expiresAt: created.link.expiresAt
+        }
+      }));
+      setGeneratedLinkQr({
+        url,
+        label: `Direct link for ${item.filename}`,
+        expiresAt: created.link.expiresAt
+      });
+      await navigator.clipboard.writeText(url);
+      setStatus("");
+      emitSystemLog(`Direct link generated for ${item.filename}.`, "success");
+    } catch {
+      setStatus(`Failed to generate direct link for ${item.filename}.`);
+    }
   }
 
   function toggleSelected(itemId: string, checked: boolean): void {
@@ -203,26 +225,32 @@ export function MediaManager() {
   }
 
   async function createBatchShare(): Promise<void> {
-    if (selectedIds.length === 0) {
-      setStatus("Select at least one media file to create a batch share.");
+    const targetMediaIds = batchShareAll ? items.map((item) => item.id) : selectedIds;
+
+    if (targetMediaIds.length === 0) {
+      setStatus(batchShareAll ? "No media available to share." : "Select at least one media file to create a batch share.");
       return;
     }
 
-    const batchResult = await createBatch(selectedIds, batchName || undefined);
-    const shareResult = await createOrRefreshBatchShare(batchResult.batch.id, batchAllowDownload);
-    const publicUrl = shareResult.share.publicUrl ?? `${window.location.origin}${shareResult.share.publicPath}`;
+    try {
+      const batchResult = await createBatch(targetMediaIds, batchName || undefined);
+      const shareResult = await createOrRefreshBatchShare(batchResult.batch.id, batchAllowDownload);
+      const publicUrl = shareResult.share.publicUrl ?? `${window.location.origin}${shareResult.share.publicPath}`;
 
-    setBatchId(batchResult.batch.id);
-    setBatchShareUrl(publicUrl);
-    setBatchShareExpiresAt(shareResult.share.expiresAt);
-    setGeneratedLinkQr({
-      url: publicUrl,
-      label: `Batch share for ${batchResult.batch.name || "Untitled batch"}`,
-      expiresAt: shareResult.share.expiresAt
-    });
-    setStatus("Batch share link created.");
-    emitLibraryChange();
-    emitSystemLog(`Batch share generated for ${batchResult.batch.name}.`, "success");
+      setBatchId(batchResult.batch.id);
+      setBatchShareUrl(publicUrl);
+      setBatchShareExpiresAt(shareResult.share.expiresAt);
+      setGeneratedLinkQr({
+        url: publicUrl,
+        label: `Batch share for ${batchResult.batch.name || "Untitled batch"}`,
+        expiresAt: shareResult.share.expiresAt
+      });
+      setStatus("");
+      emitLibraryChange();
+      emitSystemLog(`Batch share generated for ${batchResult.batch.name}.`, "success");
+    } catch {
+      setStatus("Failed to create batch share link.");
+    }
   }
 
   async function updateDownloadSetting(nextAllowDownload: boolean): Promise<void> {
@@ -232,11 +260,15 @@ export function MediaManager() {
       return;
     }
 
-    const updated = await updateBatchShare(batchId, nextAllowDownload);
-    setBatchShareExpiresAt(updated.share.expiresAt);
-    setStatus(nextAllowDownload ? "Batch download enabled." : "Batch download disabled.");
-    emitLibraryChange();
-    emitSystemLog(nextAllowDownload ? "Batch download access enabled." : "Batch download access disabled.");
+    try {
+      const updated = await updateBatchShare(batchId, nextAllowDownload);
+      setBatchShareExpiresAt(updated.share.expiresAt);
+      setStatus("");
+      emitLibraryChange();
+      emitSystemLog(nextAllowDownload ? "Batch download access enabled." : "Batch download access disabled.");
+    } catch {
+      setStatus("Failed to update batch download setting.");
+    }
   }
 
   async function copyBatchShare(): Promise<void> {
@@ -244,9 +276,13 @@ export function MediaManager() {
       return;
     }
 
-    await navigator.clipboard.writeText(batchShareUrl);
-    setStatus("Batch share link copied.");
-    emitSystemLog("Batch share link copied.");
+    try {
+      await navigator.clipboard.writeText(batchShareUrl);
+      setStatus("");
+      emitSystemLog("Batch share link copied.");
+    } catch {
+      setStatus("Failed to copy batch share link.");
+    }
   }
 
   async function copyGeneratedQrLink(): Promise<void> {
@@ -254,77 +290,95 @@ export function MediaManager() {
       return;
     }
 
-    await navigator.clipboard.writeText(generatedLinkQr.url);
-    setStatus("Generated link copied.");
+    try {
+      await navigator.clipboard.writeText(generatedLinkQr.url);
+      setStatus("");
+    } catch {
+      setStatus("Failed to copy generated link.");
+    }
   }
 
   const activeItems = items.filter((item) => item.isActive).length;
   const downloadableItems = items.filter((item) => item.allowDownload).length;
+  const batchShareTargetCount = batchShareAll ? items.length : selectedIds.length;
 
   return (
-    <section className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-6 shadow-lift">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <section className="relative overflow-hidden rounded-2xl border border-outline-variant/20 bg-surface-container-low/80 p-5 shadow-lift backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-24 before:bg-gradient-to-b before:from-white/35 before:to-transparent dark:before:from-white/10 sm:p-6 md:bg-[linear-gradient(148deg,rgba(255,255,255,0.34),rgba(255,255,255,0.1))] md:shadow-[inset_0_1px_0_rgba(255,255,255,0.52),0_18px_38px_rgba(17,28,48,0.16)] dark:md:bg-[linear-gradient(150deg,rgba(172,198,228,0.1),rgba(172,198,228,0.03))] dark:md:shadow-[inset_0_1px_0_rgba(172,198,228,0.16),0_20px_44px_rgba(0,0,0,0.42)]">
+      <div className="pointer-events-none absolute -right-20 -top-16 hidden h-48 w-48 rounded-full bg-primary/18 blur-3xl md:block" />
+      <div className="pointer-events-none absolute -left-16 bottom-6 hidden h-36 w-36 rounded-full bg-primary-container/20 blur-3xl md:block dark:bg-primary/18" />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5">
         <div>
           <h2 className="font-headline text-xl font-bold text-on-surface">Media Archive Console</h2>
           <p className="text-xs text-on-surface-variant">Control status, download policies, direct links, and secure batches from one queue.</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-xs font-label uppercase tracking-wider text-on-surface transition-all hover:text-primary"
-            onClick={() => {
-              void refreshMedia();
-            }}
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-        </div>
       </div>
 
-      <div className="mb-5 grid gap-2 md:grid-cols-3">
-        <div className="rounded-lg border border-outline-variant/15 bg-surface-container p-3">
-          <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Indexed Files</p>
-          <p className="mt-1 font-headline text-2xl font-bold text-on-surface">{items.length}</p>
-        </div>
-        <div className="rounded-lg border border-outline-variant/15 bg-surface-container p-3">
-          <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Active Records</p>
-          <p className="mt-1 font-headline text-2xl font-bold text-on-surface">{activeItems}</p>
-        </div>
-        <div className="rounded-lg border border-outline-variant/15 bg-surface-container p-3">
-          <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Download Enabled</p>
-          <p className="mt-1 font-headline text-2xl font-bold text-on-surface">{downloadableItems}</p>
-        </div>
-      </div>
-
-      <div id="batch-share-panel" className="mb-6 rounded-xl border border-outline-variant/15 bg-surface-container p-4">
+      <div
+        id="batch-share-panel"
+        className="mb-4 rounded-2xl border border-outline-variant/20 bg-surface-container/80 p-3 backdrop-blur-lg md:bg-[linear-gradient(155deg,rgba(255,255,255,0.3),rgba(255,255,255,0.1))] dark:md:bg-[linear-gradient(155deg,rgba(172,198,228,0.08),rgba(172,198,228,0.02))]"
+      >
         <p className="text-sm font-bold uppercase tracking-wider text-on-surface">Batch Share</p>
         <p className="mt-1 text-xs text-on-surface-variant">Create one public share page for selected files. Recipients can view files without signing in.</p>
-        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_auto] md:items-center">
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-center">
           <input
             value={batchName}
             onChange={(event) => {
               setBatchName(event.target.value);
             }}
             placeholder="Batch name (optional)"
-            className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-0"
+            className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-2.5 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-0 sm:col-span-2 lg:col-span-1"
           />
-          <label className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-xs font-label uppercase tracking-wider text-on-surface">
-            <input
-              type="checkbox"
-              checked={batchAllowDownload}
-              onChange={(event) => {
-                void updateDownloadSetting(event.target.checked);
+          <div className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/24 bg-surface-container-high px-2.5 py-1.5 text-[11px] font-label uppercase tracking-wider text-on-surface">
+            <span>Allow downloads</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={batchAllowDownload}
+              aria-label="Allow downloads for this batch share"
+              className={`relative inline-flex h-5 w-10 items-center rounded-full border border-outline-variant/65 shadow-inner transition-colors ${
+                batchAllowDownload
+                  ? "bg-primary"
+                  : "bg-surface-container-low"
+              }`}
+              onClick={() => {
+                void updateDownloadSetting(!batchAllowDownload);
               }}
-            />
-            Allow downloads
-          </label>
+            >
+              <span
+                className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-white/70 bg-white/95 shadow-sm transition-transform dark:border-slate-200/35 dark:bg-slate-100/85 ${
+                  batchAllowDownload ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/24 bg-surface-container-high px-2.5 py-1.5 text-[11px] font-label uppercase tracking-wider text-on-surface">
+            <span>Share all</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={batchShareAll}
+              aria-label="Share all media in this batch"
+              className={`relative inline-flex h-5 w-10 items-center rounded-full border border-outline-variant/65 shadow-inner transition-colors ${
+                batchShareAll ? "bg-primary" : "bg-surface-container-low"
+              }`}
+              onClick={() => {
+                setBatchShareAll((current) => !current);
+              }}
+            >
+              <span
+                className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-white/70 bg-white/95 shadow-sm transition-transform dark:border-slate-200/35 dark:bg-slate-100/85 ${
+                  batchShareAll ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
           <button
-            className="rounded-lg bg-gradient-to-r from-primary to-primary-container px-3 py-2 text-xs font-label font-bold uppercase tracking-widest text-on-primary-container transition-all hover:scale-[1.01]"
+            className="rounded-lg bg-gradient-to-r from-primary to-primary-container px-2.5 py-1.5 text-[11px] font-label font-bold uppercase tracking-wider text-on-primary-container transition-all hover:scale-[1.01]"
             onClick={() => {
               void createBatchShare();
             }}
           >
-            Create share link ({selectedIds.length})
+            Create link ({batchShareTargetCount})
           </button>
         </div>
 
@@ -387,113 +441,249 @@ export function MediaManager() {
         }}
       />
 
-      <div className="overflow-x-auto rounded-2xl border border-outline-variant/10 bg-surface-container-lowest/30">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead>
-            <tr>
-              <th className="px-4 py-4 text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant">Select</th>
-              <th className="px-4 py-4 text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant">Asset</th>
-              <th className="px-4 py-4 text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant">Type</th>
-              <th className="px-4 py-4 text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant">Size</th>
-              <th className="px-4 py-4 text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant">Status</th>
-              <th className="px-4 py-4 text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant">Expires</th>
-              <th className="px-4 py-4 text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant">Updated</th>
-              <th className="px-4 py-4 text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant/10">
-            {items.length > 0 ? (
-              items.map((item) => {
-                const state = getMediaState(item);
-                return (
-                  <tr key={item.id} className="group transition-colors hover:bg-surface-container-high/40">
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(item.id)}
-                        onChange={(event) => {
-                          toggleSelected(item.id, event.target.checked);
-                        }}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-on-surface">{item.filename}</p>
-                      <p className="text-[10px] font-mono text-on-surface-variant">ID {shortenIdentifier(item.id)}</p>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-on-surface-variant">{item.mimeType}</td>
-                    <td className="px-4 py-3 text-xs text-on-surface-variant">{asMegabytes(item.sizeBytes)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-label uppercase tracking-wider ${state.className}`}>{state.label}</span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-on-surface-variant">{item.expiresAt ? formatDateTimeDdMmYyyyHm(item.expiresAt) : "-"}</td>
-                    <td className="px-4 py-3 text-xs text-on-surface-variant">{formatDateTimeDdMmYyyyHm(item.updatedAt)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        {item.mimeType.startsWith("image/") ? (
-                          <button
-                            className="rounded-lg border border-outline-variant/20 bg-surface-container p-2 text-on-surface-variant transition-all hover:text-primary"
-                            aria-label={directLinks[item.id] ? "copy direct link" : "generate direct link"}
-                            onClick={() => {
-                              void generateOrCopyDirectLink(item);
-                            }}
-                            title={directLinks[item.id] ? "Copy direct link" : "Generate direct link"}
-                          >
-                            {directLinks[item.id] ? <Copy className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
-                          </button>
-                        ) : null}
-                        <button
-                          className="rounded-lg border border-outline-variant/20 bg-surface-container p-2 text-on-surface-variant transition-all hover:text-primary"
-                          aria-label="replace media"
-                          onClick={() => {
-                            setSelectedReplaceId(item.id);
-                            fileInputRef.current?.click();
-                          }}
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-lg border border-outline-variant/20 bg-surface-container p-2 text-on-surface-variant transition-all hover:text-primary"
-                          aria-label="toggle active"
-                          onClick={() => {
-                            void toggleActive(item);
-                          }}
-                        >
-                          <Power className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-lg border border-outline-variant/20 bg-surface-container p-2 text-on-surface-variant transition-all hover:text-primary"
-                          aria-label="toggle download"
-                          onClick={() => {
-                            void toggleDownload(item);
-                          }}
-                        >
-                          <Download className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-lg border border-outline-variant/20 bg-surface-container p-2 text-on-surface-variant transition-all hover:text-error"
-                          aria-label="delete media"
-                          onClick={() => {
-                            void removeItem(item);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+      <div className="relative overflow-hidden rounded-[1.4rem] border border-outline-variant/15 bg-surface-container-lowest/45 px-1 py-1 backdrop-blur-xl sm:px-1.5 sm:py-1.5 md:bg-[linear-gradient(165deg,rgba(255,255,255,0.3),rgba(255,255,255,0.06))] dark:md:bg-[linear-gradient(165deg,rgba(172,198,228,0.08),rgba(172,198,228,0.01))]">
+        <div className="divide-y divide-outline-variant/10 md:hidden">
+          {items.length > 0 ? (
+            items.map((item) => {
+              const state = getMediaState(item);
+              const isSelected = selectedIds.includes(item.id);
+              return (
+                <article key={item.id} className="p-2.5">
+                  <div className="flex items-start gap-2">
+                    <button
+                      type="button"
+                      className={`mt-0.5 grid h-5 w-5 place-items-center rounded-full border transition-all ${
+                        isSelected
+                          ? "border-primary/90 bg-primary/30 text-primary"
+                          : "border-outline-variant/70 bg-surface-container-low text-on-surface-variant"
+                      }`}
+                      aria-label={isSelected ? "Unselect media" : "Select media"}
+                      aria-pressed={isSelected}
+                      onClick={() => {
+                        toggleSelected(item.id, !isSelected);
+                      }}
+                    >
+                      <span className={`material-symbols-outlined text-[13px] transition-opacity ${isSelected ? "opacity-100" : "opacity-0"}`}>done</span>
+                    </button>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-on-surface" title={item.filename}>{item.filename}</p>
+
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <span className="truncate text-[10px] text-on-surface-variant" title={`${item.mimeType} • ${asMegabytes(item.sizeBytes)}`}>{item.mimeType} • {asMegabytes(item.sizeBytes)}</span>
+                        <span className="truncate text-[10px] text-on-surface-variant">Exp: {item.expiresAt ? formatDateTimeDdMmYyyyHm(item.expiresAt) : "-"}</span>
                       </div>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
+
+                      <div className="mt-1.5 flex items-center justify-between gap-2">
+                        <span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-label uppercase tracking-wider ${state.className}`}>{state.label}</span>
+                        <div className="flex flex-nowrap justify-end gap-1">
+                          {item.mimeType.startsWith("image/") ? (
+                            <button
+                              className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                              aria-label={directLinks[item.id] ? "copy direct link" : "generate direct link"}
+                              onClick={() => {
+                                void generateOrCopyDirectLink(item);
+                              }}
+                              title={directLinks[item.id] ? "Copy direct link" : "Generate direct link"}
+                            >
+                              {directLinks[item.id] ? <Copy className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                            </button>
+                          ) : null}
+                          <button
+                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            aria-label="replace media"
+                            onClick={() => {
+                              setSelectedReplaceId(item.id);
+                              fileInputRef.current?.click();
+                            }}
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            aria-label="toggle active"
+                            onClick={() => {
+                              void toggleActive(item);
+                            }}
+                          >
+                            <Power className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            aria-label="toggle download"
+                            onClick={() => {
+                              void toggleDownload(item);
+                            }}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-error"
+                            aria-label="delete media"
+                            onClick={() => {
+                              void removeItem(item);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })
+          ) : (
+            <p className="px-2 py-8 text-center text-sm text-on-surface-variant">No media indexed yet.</p>
+          )}
+        </div>
+
+        <div className="hidden overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-low/35 md:block">
+          <table className="w-full table-fixed text-left text-xs">
+            <colgroup>
+              <col className="w-10 sm:w-12" />
+              <col />
+              <col className="w-[5.5rem]" />
+              <col className="w-[7.25rem]" />
+              <col className="w-[11rem]" />
+            </colgroup>
+            <thead className="bg-white/24 backdrop-blur-md dark:bg-slate-900/24">
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-sm text-on-surface-variant">
-                  No indexed media yet. Upload files to populate the library.
-                </td>
+                <th className="pl-2 pr-4 py-3 text-center text-[10px] font-label uppercase tracking-[0.15em] text-on-surface-variant">
+                  <span className="sm:hidden">Sel</span>
+                  <span className="hidden sm:inline">Select</span>
+                </th>
+                <th className="pl-4 pr-2 py-3 text-[10px] font-label uppercase tracking-[0.15em] text-on-surface-variant">Asset</th>
+                <th className="px-2 py-3 text-left text-[10px] font-label uppercase tracking-[0.15em] text-on-surface-variant">State</th>
+                <th className="px-2 py-3 text-left text-[10px] font-label uppercase tracking-[0.15em] text-on-surface-variant">Expiry</th>
+                <th className="px-2 py-3 text-right text-[10px] font-label uppercase tracking-[0.15em] text-on-surface-variant">
+                  <span className="sm:hidden">Act</span>
+                  <span className="hidden sm:inline">Actions</span>
+                </th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-outline-variant/10">
+              {items.length > 0 ? (
+                items.map((item) => {
+                  const state = getMediaState(item);
+                  const isSelected = selectedIds.includes(item.id);
+                  return (
+                    <tr key={item.id} className="group transition-colors hover:bg-surface-container-high/40 md:hover:bg-white/18 dark:md:hover:bg-slate-800/28">
+                      <td className="pl-2 pr-4 py-2 align-top text-center">
+                        <button
+                          type="button"
+                          className={`inline-grid h-5 w-5 place-items-center rounded-full border transition-all ${
+                            isSelected
+                              ? "border-primary/90 bg-primary/30 text-primary"
+                              : "border-outline-variant/70 bg-surface-container-low text-on-surface-variant"
+                          }`}
+                          aria-label={isSelected ? "Unselect media" : "Select media"}
+                          aria-pressed={isSelected}
+                          onClick={() => {
+                            toggleSelected(item.id, !isSelected);
+                          }}
+                        >
+                          <span className={`material-symbols-outlined text-[13px] transition-opacity ${isSelected ? "opacity-100" : "opacity-0"}`}>done</span>
+                        </button>
+                      </td>
+                      <td className="pl-4 pr-2 py-2 align-top">
+                        <p className="max-w-full truncate font-semibold text-on-surface" title={item.filename}>{item.filename}</p>
+                        <p className="truncate text-[10px] text-on-surface-variant" title={`${item.mimeType} • ${asMegabytes(item.sizeBytes)}`}>{item.mimeType} • {asMegabytes(item.sizeBytes)}</p>
+                      </td>
+                      <td className="px-2 py-2 align-top">
+                        <span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-label uppercase tracking-wider ${state.className}`}>{state.label}</span>
+                      </td>
+                      <td className="truncate px-2 py-2 align-top text-xs text-on-surface-variant">{item.expiresAt ? formatDateTimeDdMmYyyyHm(item.expiresAt) : "-"}</td>
+                      <td className="px-2 py-2 align-top whitespace-nowrap">
+                        <div className="flex flex-nowrap justify-end gap-1">
+                          {item.mimeType.startsWith("image/") ? (
+                            <button
+                              className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                              aria-label={directLinks[item.id] ? "copy direct link" : "generate direct link"}
+                              onClick={() => {
+                                void generateOrCopyDirectLink(item);
+                              }}
+                              title={directLinks[item.id] ? "Copy direct link" : "Generate direct link"}
+                            >
+                              {directLinks[item.id] ? <Copy className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                            </button>
+                          ) : null}
+                          <button
+                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            aria-label="replace media"
+                            onClick={() => {
+                              setSelectedReplaceId(item.id);
+                              fileInputRef.current?.click();
+                            }}
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            aria-label="toggle active"
+                            onClick={() => {
+                              void toggleActive(item);
+                            }}
+                          >
+                            <Power className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            aria-label="toggle download"
+                            onClick={() => {
+                              void toggleDownload(item);
+                            }}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-error"
+                            aria-label="delete media"
+                            onClick={() => {
+                              void removeItem(item);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-2 py-8 text-center text-sm text-on-surface-variant">
+                    No media indexed yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-      <p className="mt-3 text-[10px] font-label uppercase tracking-widest text-on-surface-variant">{status}</p>
+
+      <div className="mt-4 grid grid-cols-3 gap-1.5">
+        <div className="surface-soft rounded-md border border-outline-variant/15 bg-surface-container p-2">
+          <div className="flex items-center justify-between gap-1">
+            <p className="truncate text-[9px] font-label uppercase tracking-wider text-on-surface-variant">Indexed</p>
+            <p className="font-headline text-sm font-bold text-on-surface">{items.length}</p>
+          </div>
+        </div>
+        <div className="surface-soft rounded-md border border-outline-variant/15 bg-surface-container p-2">
+          <div className="flex items-center justify-between gap-1">
+            <p className="truncate text-[9px] font-label uppercase tracking-wider text-on-surface-variant">Active</p>
+            <p className="font-headline text-sm font-bold text-on-surface">{activeItems}</p>
+          </div>
+        </div>
+        <div className="surface-soft rounded-md border border-outline-variant/15 bg-surface-container p-2">
+          <div className="flex items-center justify-between gap-1">
+            <p className="truncate text-[9px] font-label uppercase tracking-wider text-on-surface-variant">Download</p>
+            <p className="font-headline text-sm font-bold text-on-surface">{downloadableItems}</p>
+          </div>
+        </div>
+      </div>
+
+      {status ? <p className="mt-3 text-[10px] font-label uppercase tracking-widest text-on-surface-variant">{status}</p> : null}
     </section>
   );
 }

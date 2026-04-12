@@ -237,11 +237,11 @@ main() {
   pnpm --filter @linkforge/backend exec prisma db push
 
   echo "[STEP] Starting backend and frontend..."
-  start_service "LinkForge Backend" "pnpm --filter @linkforge/backend dev" "$backend_pid_file" "$LOG_DIR/backend.log"
-  start_service "LinkForge Frontend" "pnpm --filter @linkforge/frontend dev" "$frontend_pid_file" "$LOG_DIR/frontend.log"
+  start_service "EtherSend Backend" "pnpm --filter @linkforge/backend dev" "$backend_pid_file" "$LOG_DIR/backend.log"
+  start_service "EtherSend Frontend" "pnpm --filter @linkforge/frontend dev" "$frontend_pid_file" "$LOG_DIR/frontend.log"
 
   echo ""
-  echo "LinkForge is starting in background."
+  echo "EtherSend is starting in background."
   echo "- Frontend: http://localhost:3000"
   echo "- Backend : http://localhost:4000"
   echo ""

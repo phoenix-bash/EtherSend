@@ -9,5 +9,7 @@ build/
 coverage/
 .DS_Store
 apps/backend/storage/
+deploy/nginx/certs/*
+!deploy/nginx/certs/.gitkeep
 docker-compose.yml
 .codex                  

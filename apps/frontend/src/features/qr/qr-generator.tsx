@@ -90,7 +90,7 @@ export function QrGenerator() {
 
           const anchor = document.createElement("a");
           anchor.href = qrImage;
-          anchor.download = `linkforge-qr-${Date.now()}.png`;
+          anchor.download = `ethersend-qr-${Date.now()}.png`;
           anchor.click();
         }}
       >

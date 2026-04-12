@@ -14,6 +14,13 @@ export function AuthCallbackClient() {
   useEffect(() => {
     async function finalizeAuth() {
       try {
+        const errorCode = searchParams.get("errorCode");
+        if (errorCode === "PASSWORD_RESET_REQUIRED") {
+          setStatus("error");
+          setMessage("Too many active sessions. Reset your password to continue.");
+          return;
+        }
+
         const accessToken = searchParams.get("accessToken");
         if (accessToken) {
           setAccessToken(accessToken);
@@ -48,7 +55,7 @@ export function AuthCallbackClient() {
   }, [router, searchParams]);
 
   return (
-    <main className="mesh-gradient relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-10">
+    <main className="glass-site mesh-gradient relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-10">
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-primary/5 blur-[120px]"></div>
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-secondary/5 blur-[120px]"></div>
 
@@ -80,9 +87,14 @@ export function AuthCallbackClient() {
                 <span className="material-symbols-outlined text-sm">error</span>
                 Authorization failed
               </p>
-              <Link href="/auth/signin" className="inline-flex w-fit rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-xs font-semibold uppercase tracking-wider text-on-surface hover:text-primary">
-                Back to sign in
-              </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link href="/auth/signin" className="inline-flex w-fit rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-xs font-semibold uppercase tracking-wider text-on-surface hover:text-primary">
+                  Back to sign in
+                </Link>
+                <Link href="/auth/forgot-password?reason=session-limit" className="inline-flex w-fit rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-xs font-semibold uppercase tracking-wider text-on-surface hover:text-primary">
+                  Reset password
+                </Link>
+              </div>
             </div>
           ) : null}
         </div>

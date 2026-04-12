@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "@fontsource/material-symbols-outlined";
 import "./globals.css";
+import { PageTransition } from "../components/page-transition";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-body" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-headline" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "LinkForge",
+  title: "EtherSend",
   description: "Persistent media and link control platform"
 };
 
@@ -26,6 +27,23 @@ const themeBootstrapScript = `(() => {
 
 const hydrationSanitizerScript = `(() => {
   try {
+    const isExtensionInjectedScript = (element) => {
+      if (!(element instanceof HTMLScriptElement)) {
+        return false;
+      }
+
+      const src = (element.getAttribute("src") || "").trim();
+      if (
+        src.startsWith("chrome-extension://") ||
+        src.startsWith("moz-extension://") ||
+        src.startsWith("safari-extension://")
+      ) {
+        return true;
+      }
+
+      return element.hasAttribute("data-bis-config") || element.hasAttribute("data-dynamic-id");
+    };
+
     const shouldRemoveAttribute = (name) => {
       return (
         name === "data-new-gr-c-s-check-loaded" ||
@@ -50,10 +68,20 @@ const hydrationSanitizerScript = `(() => {
         return;
       }
 
+      if (isExtensionInjectedScript(rootNode)) {
+        rootNode.remove();
+        return;
+      }
+
       sanitizeElement(rootNode);
 
       const children = rootNode.querySelectorAll("*");
       for (const child of children) {
+        if (isExtensionInjectedScript(child)) {
+          child.remove();
+          continue;
+        }
+
         sanitizeElement(child);
       }
     };
@@ -94,11 +122,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: hydrationSanitizerScript }} />
-        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: hydrationSanitizerScript }} />
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
       <body suppressHydrationWarning className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
-        {children}
+        <PageTransition>{children}</PageTransition>
       </body>
     </html>
   );

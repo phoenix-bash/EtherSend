@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Download, Eye } from "lucide-react";
 import {
@@ -193,19 +194,19 @@ export function SharePageClient({ token }: SharePageClientProps) {
   }, [data?.allowDownload, preview?.mimeType, preview?.objectUrl]);
 
   return (
-    <main className="mesh-gradient min-h-screen text-on-surface">
+    <main className="glass-site mesh-gradient min-h-screen text-on-surface">
       <header className="glass-header fixed left-0 right-0 top-0 z-50 flex h-20 items-center justify-between px-6 md:px-12">
-        <div className="flex items-center gap-4">
+        <Link href="/" className="flex items-center gap-4">
           <div className="signature-gradient flex h-10 w-10 items-center justify-center rounded shadow-terminal">
             <span className="material-symbols-outlined text-2xl text-on-primary-container" style={{ fontVariationSettings: "'FILL' 1" }}>
               tools_wrench
             </span>
           </div>
           <div>
-            <h1 className="font-headline text-xl font-extrabold leading-none text-on-surface">LinkForge</h1>
+            <h1 className="font-headline text-xl font-extrabold leading-none text-on-surface">EtherSend</h1>
             <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-primary">Asset Intelligence</p>
           </div>
-        </div>
+        </Link>
 
         <div className="flex items-center gap-6">
           <div className="hidden items-center gap-2 rounded bg-surface-container-lowest px-3 py-1.5 ghost-border md:flex">

@@ -5,7 +5,7 @@ export default function AuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <main className="mesh-gradient relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-10">
+        <main className="glass-site mesh-gradient relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-10">
           <section className="glass-card w-full max-w-[440px] rounded-lg border border-outline-variant/20 p-10 shadow-[0px_0px_36px_rgba(75,188,214,0.06)]">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Authentication Gateway</p>
             <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-on-surface">Finalizing Sign-In</h1>
