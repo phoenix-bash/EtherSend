@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 interface PageTransitionProps {
   children: ReactNode;
@@ -9,8 +9,7 @@ interface PageTransitionProps {
 
 export function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const transitionKey = `${pathname}?${searchParams.toString()}`;
+  const transitionKey = pathname;
 
   return (
     <div key={transitionKey} className="page-enter min-h-screen">

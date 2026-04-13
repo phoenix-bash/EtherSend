@@ -709,3 +709,16 @@ Import trace for requested module:
  GET /auth/signin 200 in 205ms
  GET / 200 in 205ms
  GET / 200 in 208ms
+   Reload env: .env.local
+ ✓ Compiled in 976ms (1845 modules)
+ GET / 200 in 241ms
+ GET / 200 in 238ms
+ GET /auth/signin 200 in 253ms
+ ✓ Compiled in 796ms (1845 modules)
+ GET / 200 in 125ms
+ GET / 200 in 121ms
+ GET /auth/signin 200 in 130ms
+/home/phoenix/LinkForge/apps/frontend:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @linkforge/frontend@0.1.0 dev: `next dev -p 3000`
+Command failed with signal "SIGTERM"
+[?25h
