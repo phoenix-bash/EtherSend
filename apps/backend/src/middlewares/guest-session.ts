@@ -9,12 +9,10 @@ export async function ensureGuestSession(request: FastifyRequest, reply: Fastify
 
   request.headers["x-guest-session-id"] = guest.sessionId;
 
-  if (!existingToken || existingToken !== guest.token) {
-    reply.setCookie(guestService.getCookieName(), guest.token, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: guestService.getCookieMaxAgeSeconds()
-    });
-  }
+  reply.setCookie(guestService.getCookieName(), guest.token, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: guestService.getCookieMaxAgeSeconds()
+  });
 }

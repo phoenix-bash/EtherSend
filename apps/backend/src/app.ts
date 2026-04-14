@@ -16,6 +16,53 @@ import { registerActivityRoutes } from "./modules/activity/routes.js";
 import { registerCleanupRoutes } from "./modules/cleanup/routes.js";
 import { scheduleRecurringCleanup } from "./queues/cleanup-queue.js";
 
+function isLoopbackHostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1" || normalized === "[::1]";
+}
+
+function isPrivateIpv4Hostname(hostname: string): boolean {
+  const match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) {
+    return false;
+  }
+
+  const octets = match.slice(1).map((segment) => Number(segment));
+  if (octets.some((value) => Number.isNaN(value) || value < 0 || value > 255)) {
+    return false;
+  }
+
+  return octets[0] === 10 || (octets[0] === 192 && octets[1] === 168) || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31);
+}
+
+function isPrivateHostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  return isLoopbackHostname(normalized) || isPrivateIpv4Hostname(normalized) || normalized.endsWith(".local");
+}
+
+function normalizeOrigin(value: string): string | null {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+const normalizedFrontendOrigin = normalizeOrigin(env.FRONTEND_BASE_URL);
+const isFrontendPrivateOrigin = (() => {
+  try {
+    return isPrivateHostname(new URL(env.FRONTEND_BASE_URL).hostname);
+  } catch {
+    return false;
+  }
+})();
+
+const allowedCorsOrigins = new Set<string>(
+  [normalizedFrontendOrigin, ...env.CORS_ALLOWED_ORIGINS.split(",").map((origin) => normalizeOrigin(origin.trim()))].filter(
+    (origin): origin is string => Boolean(origin)
+  )
+);
+
 export async function buildApp(): Promise<FastifyInstance> {
   const app = fastify({
     logger: {
@@ -35,7 +82,29 @@ export async function buildApp(): Promise<FastifyInstance> {
         return;
       }
 
-      callback(null, origin === env.FRONTEND_BASE_URL);
+      const normalizedOrigin = normalizeOrigin(origin);
+      if (!normalizedOrigin) {
+        callback(null, false);
+        return;
+      }
+
+      if (allowedCorsOrigins.has(normalizedOrigin)) {
+        callback(null, true);
+        return;
+      }
+
+      if (isFrontendPrivateOrigin) {
+        try {
+          const originUrl = new URL(normalizedOrigin);
+          callback(null, isPrivateHostname(originUrl.hostname));
+          return;
+        } catch {
+          callback(null, false);
+          return;
+        }
+      }
+
+      callback(null, false);
     },
     credentials: true
   });

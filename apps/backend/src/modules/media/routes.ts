@@ -53,12 +53,7 @@ function canMutateMedia(media: MediaFile, actor: Actor): boolean {
     return actor.role === "ADMIN" || media.userId === actor.userId;
   }
 
-  return Boolean(
-    media.ownerType === "GUEST" &&
-      media.guestSessionId === actor.guestSessionId &&
-      media.expiresAt &&
-      media.expiresAt.getTime() >= actor.requestStartMs
-  );
+  return Boolean(media.ownerType === "GUEST" && media.guestSessionId === actor.guestSessionId);
 }
 
 export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {

@@ -653,7 +653,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     const validityEndsAt =
       user.accountType === "SUBSCRIPTION"
         ? user.planValidUntil
-        : new Date(Date.now() + 1000 * 60 * 60 * 24 * 30 * 6);
+        : new Date(Date.now() + 1000 * 60 * 60 * 24 * 30 * 3);
 
     return {
       account: {

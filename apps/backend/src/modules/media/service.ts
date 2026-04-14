@@ -12,12 +12,20 @@ import { MediaRepository } from "./repository.js";
 
 const storage = new LocalStorageProvider();
 const guestService = new GuestService();
-const SIX_MONTHS_MS = 1000 * 60 * 60 * 24 * 30 * 6;
+const THREE_MONTHS_MS = 1000 * 60 * 60 * 24 * 30 * 3;
 
 interface UploadMediaInput {
   file: MultipartFile;
   userId?: string;
   guestSessionId?: string;
+}
+
+function getUploadedByteCount(file: MultipartFile): number {
+  return Math.max(0, Number((file.file as { bytesRead?: number }).bytesRead ?? 0));
+}
+
+function isMultipartFileTruncated(file: MultipartFile): boolean {
+  return Boolean((file.file as { truncated?: boolean }).truncated);
 }
 
 export class MediaService {
@@ -56,7 +64,7 @@ export class MediaService {
       return user.planValidUntil;
     }
 
-    return new Date(Date.now() + SIX_MONTHS_MS);
+    return new Date(Date.now() + THREE_MONTHS_MS);
   }
 
   async upload(input: UploadMediaInput) {
@@ -76,7 +84,17 @@ export class MediaService {
       path: storagePath
     });
 
-    const fileBytes = Math.max(0, Number((input.file.file as { bytesRead?: number }).bytesRead ?? 0));
+    const fileBytes = getUploadedByteCount(input.file);
+
+    if (isMultipartFileTruncated(input.file) || fileBytes > env.MAX_UPLOAD_BYTES) {
+      await storage.delete(storagePath);
+      throw new HttpError(413, "File exceeds upload size limit");
+    }
+
+    if (fileBytes <= 0) {
+      await storage.delete(storagePath);
+      throw new HttpError(400, "Uploaded file is empty");
+    }
 
     if (ownerType === "USER" && input.userId) {
       try {
@@ -135,7 +153,18 @@ export class MediaService {
     const storagePath = `media/${mediaId}/v${Date.now()}-${file.filename}`;
     await storage.replace({ stream: file.file, path: storagePath });
 
-    const fileBytes = Math.max(0, Number((file.file as { bytesRead?: number }).bytesRead ?? 0));
+    const fileBytes = getUploadedByteCount(file);
+
+    if (isMultipartFileTruncated(file) || fileBytes > env.MAX_UPLOAD_BYTES) {
+      await storage.delete(storagePath);
+      throw new HttpError(413, "File exceeds upload size limit");
+    }
+
+    if (fileBytes <= 0) {
+      await storage.delete(storagePath);
+      throw new HttpError(400, "Uploaded file is empty");
+    }
+
     const extension = extname(file.filename || "").replace(".", "").toLowerCase() || undefined;
 
     if (media.ownerType === "USER" && media.userId) {

@@ -8,7 +8,7 @@ import { useAuthSession } from "../../hooks/use-auth-session";
 import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
 
 const GUEST_STORAGE_CAP_BYTES = 100 * 1024 * 1024;
-const SIGNED_IN_STORAGE_CAP_BYTES = 1024 * 1024 * 1024;
+const SIGNED_IN_STORAGE_CAP_BYTES = 512 * 1024 * 1024;
 
 interface OverviewState {
   totalFiles: number;

@@ -4,8 +4,8 @@ import { prisma } from "../../config/prisma.js";
 import { HttpError } from "../../utils/http-error.js";
 
 const GUEST_COOKIE_NAME = "lf_guest";
-const TEN_MIN_MS = 10 * 60 * 1000;
-const GUEST_COOKIE_MAX_AGE_SECONDS = 10 * 60;
+const GUEST_SESSION_TTL_MS = 30 * 60 * 1000;
+const GUEST_COOKIE_MAX_AGE_SECONDS = 30 * 60;
 
 function hashToken(token: string): string {
   return createHash("sha256").update(`${token}:${env.GUEST_SESSION_SECRET}`).digest("hex");
@@ -49,7 +49,7 @@ export class GuestService {
       throw new HttpError(401, "Guest session not found");
     }
 
-    if (guest.uploadCount >= 5) {
+    if (guest.uploadCount >= 6) {
       throw new HttpError(429, "Guest upload limit reached");
     }
 
@@ -67,7 +67,7 @@ export class GuestService {
 
     const now = new Date();
     const startedAt = guest.startedAt ?? now;
-    const expiresAt = new Date(now.getTime() + TEN_MIN_MS);
+    const expiresAt = new Date(now.getTime() + GUEST_SESSION_TTL_MS);
 
     await prisma.guestSession.update({
       where: { id: sessionId },

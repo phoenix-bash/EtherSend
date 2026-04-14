@@ -16,14 +16,18 @@ interface UploadedMediaEntry {
 
 const GUEST_UPLOAD_CHOICE_KEY = "ethersend:guest-upload-choice";
 const GUEST_CONTINUE_CHOICE = "continue";
-const GUEST_MAX_FILES_PER_BATCH = 5;
+const GUEST_MODE_STORAGE_KEY = "lf_guest_mode_enabled";
+const GUEST_MAX_FILES_PER_BATCH = 6;
 
-function hasGuestChosenContinue(): boolean {
+function hasGuestUploadAccess(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
 
-  return window.localStorage.getItem(GUEST_UPLOAD_CHOICE_KEY) === GUEST_CONTINUE_CHOICE;
+  return (
+    window.localStorage.getItem(GUEST_UPLOAD_CHOICE_KEY) === GUEST_CONTINUE_CHOICE ||
+    window.localStorage.getItem(GUEST_MODE_STORAGE_KEY) === "true"
+  );
 }
 
 export function MediaUploader() {
@@ -32,6 +36,8 @@ export function MediaUploader() {
   const [progress, setProgress] = useState(0);
   const [uploadedMedia, setUploadedMedia] = useState<UploadedMediaEntry[]>([]);
   const [status, setStatus] = useState<string>("Upload media files. Create direct links from Media Manager.");
+  const isUploading = status.startsWith("Uploading") && progress > 0 && progress < 100;
+  const hasProgress = progress > 0;
 
   useEffect(() => {
     function onSignedOut(): void {
@@ -55,11 +61,22 @@ export function MediaUploader() {
       }
 
       const uploadedEntries: UploadedMediaEntry[] = [];
+      let terminalGuestStatus: string | null = null;
+      const totalBytes = files.reduce((sum, file) => sum + Math.max(0, file.size || 0), 0);
+      let uploadedBytes = 0;
+
+      const toProgressPercent = (bytes: number): number => {
+        if (totalBytes <= 0) {
+          return 0;
+        }
+
+        const ratio = Math.min(1, Math.max(0, bytes / totalBytes));
+        return Math.round(ratio * 100);
+      };
 
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
-        const progressValue = Math.round((index / files.length) * 100);
-        setProgress(progressValue);
+        setProgress(toProgressPercent(uploadedBytes));
         setStatus(`Uploading ${index + 1}/${files.length}: ${file.name}`);
 
         try {
@@ -77,16 +94,27 @@ export function MediaUploader() {
             filename: uploadResult.media.filename,
             expiresAt: uploadResult.media.expiresAt ?? null
           });
+
+          uploadedBytes += Math.max(0, file.size || 0);
+          setProgress(toProgressPercent(uploadedBytes));
         } catch (error) {
           if (error instanceof ApiError) {
             if (!user && (error.status === 401 || error.status === 403 || error.status === 413 || error.status === 429)) {
               const uploadedCount = uploadedEntries.length;
-              setProgress(uploadedCount > 0 ? 100 : 0);
-              setStatus(
+              const reasonLabel =
+                error.status === 413
+                  ? "Guest storage limit reached."
+                  : error.status === 429
+                    ? "Guest upload limit reached."
+                    : "Guest session expired. Refresh and try again.";
+
+              terminalGuestStatus =
                 uploadedCount > 0
-                  ? `Uploaded ${uploadedCount}/${files.length}. Guest policy limit reached for remaining files.`
-                  : "Guest upload policy limit reached. Sign in for higher limits."
-              );
+                  ? `Uploaded ${uploadedCount}/${files.length}. ${reasonLabel}`
+                  : reasonLabel;
+
+              setProgress(toProgressPercent(uploadedBytes));
+              setStatus(terminalGuestStatus);
               window.dispatchEvent(
                 new CustomEvent(SYSTEM_LOG_EVENT, {
                   detail: { message: "Guest upload reached policy limits.", level: "warning" }
@@ -106,6 +134,8 @@ export function MediaUploader() {
               );
               return;
             }
+
+            setStatus(error.message);
           }
 
           window.dispatchEvent(
@@ -118,12 +148,16 @@ export function MediaUploader() {
 
       if (uploadedEntries.length > 0) {
         setUploadedMedia((current) => [...uploadedEntries, ...current]);
-        setProgress(100);
+        setProgress(toProgressPercent(uploadedBytes));
         setStatus(
           uploadedEntries.length === files.length
             ? `Uploaded ${uploadedEntries.length} file${uploadedEntries.length === 1 ? "" : "s"}.`
             : `Uploaded ${uploadedEntries.length}/${files.length} file${files.length === 1 ? "" : "s"}.`
         );
+        return;
+      }
+
+      if (terminalGuestStatus) {
         return;
       }
 
@@ -142,7 +176,7 @@ export function MediaUploader() {
       return;
     }
 
-    if (!user && !hasGuestChosenContinue()) {
+    if (!user && !hasGuestUploadAccess()) {
       return;
     }
 
@@ -159,21 +193,27 @@ export function MediaUploader() {
       return;
     }
 
-    const allowedFiles = !user ? files.slice(0, GUEST_MAX_FILES_PER_BATCH) : files;
-    const skippedByCount = files.length - allowedFiles.length;
-
-    if (skippedByCount > 0) {
-      setStatus(`Guest policy allows up to ${GUEST_MAX_FILES_PER_BATCH} files at once. Uploading first ${allowedFiles.length}.`);
+    if (!user && files.length > GUEST_MAX_FILES_PER_BATCH) {
+      clearPendingUploads();
+      setProgress(0);
+      setStatus(`Guest uploads are limited to ${GUEST_MAX_FILES_PER_BATCH} files. Sign in to upload more.`);
+      window.dispatchEvent(
+        new CustomEvent(SYSTEM_LOG_EVENT, {
+          detail: { message: "Guest upload selection exceeded item limit.", level: "warning" }
+        })
+      );
+      router.push("/auth/signin?source=upload&returnTo=/");
+      return;
     }
 
-    if (!user && !hasGuestChosenContinue()) {
-      queuePendingUploads(allowedFiles);
+    if (!user && !hasGuestUploadAccess()) {
+      queuePendingUploads(files);
       setStatus("Redirecting to login. Your selected files are saved.");
       router.push("/auth/signin?source=upload&returnTo=/");
       return;
     }
 
-    await performUploadBatch(allowedFiles);
+    await performUploadBatch(files);
   }
 
   return (
@@ -203,11 +243,17 @@ export function MediaUploader() {
       </label>
 
       <div className="relative px-5 pb-5 pt-4">
-        <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container">
-          <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-container transition-all" style={{ width: `${progress}%` }} />
+        <div className={`upload-progress-shell h-3 w-full ${isUploading ? "is-active" : ""}`}>
+          <div className="upload-progress-grid" aria-hidden="true" />
+          <div className={`upload-progress-fill ${isUploading ? "is-active" : ""}`} style={{ width: `${progress}%` }}>
+            {hasProgress ? <span className="upload-progress-head" aria-hidden="true" /> : null}
+          </div>
         </div>
 
-        <p className="mt-2 text-[10px] font-label uppercase tracking-widest text-on-surface-variant">{status}</p>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <p className="min-w-0 text-[10px] font-label uppercase tracking-widest text-on-surface-variant">{status}</p>
+          <span className="shrink-0 text-[10px] font-label uppercase tracking-widest text-primary">{progress}%</span>
+        </div>
 
         {uploadedMedia.length > 0 ? (
           <div className="mt-3 rounded-lg border border-outline-variant/15 bg-surface-container p-3">

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ControlShell } from "../../components/control-shell";
 import { QRCodeSVG } from "qrcode.react";
+import { copyTextToClipboard } from "../../lib/clipboard";
 import { listBatches, updateBatchShare, type BatchListItem } from "../../lib/api-client";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT } from "../../lib/events";
 import { formatDateDdMmYyyy } from "../../lib/utils";
@@ -45,6 +46,7 @@ export default function BatchesPage() {
   const [origin, setOrigin] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [updatingBatchIds, setUpdatingBatchIds] = useState<string[]>([]);
+  const [copiedBatchId, setCopiedBatchId] = useState<string | null>(null);
 
   async function refreshBatches(): Promise<void> {
     setLoading(true);
@@ -94,6 +96,20 @@ export default function BatchesPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!copiedBatchId) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCopiedBatchId(null);
+    }, 1800);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [copiedBatchId]);
+
   const sharedBatches = useMemo(() => {
     const shared = batches.filter((batch) => batch.share);
     if (!batchQuery) {
@@ -103,9 +119,15 @@ export default function BatchesPage() {
     return shared.filter((batch) => `${formatBatchName(batch)} ${batch.id}`.toLowerCase().includes(batchQuery));
   }, [batchQuery, batches]);
 
-  async function copyBatchUrl(url: string): Promise<void> {
-    await navigator.clipboard.writeText(url);
-    setStatus("Batch URL copied.");
+  async function copyBatchUrl(batchId: string, url: string): Promise<void> {
+    const copied = await copyTextToClipboard(url);
+    if (copied) {
+      setCopiedBatchId(batchId);
+      setStatus("Batch URL copied.");
+      return;
+    }
+
+    setStatus("Failed to copy batch URL on this device.");
   }
 
   async function setBatchDownloadAccess(batchId: string, allowDownload: boolean): Promise<void> {
@@ -220,10 +242,10 @@ export default function BatchesPage() {
                         type="button"
                         className="rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface transition-colors hover:text-primary"
                         onClick={() => {
-                          void copyBatchUrl(shareUrl);
+                          void copyBatchUrl(batch.id, shareUrl);
                         }}
                       >
-                        Copy URL
+                        {copiedBatchId === batch.id ? "(Copied)" : "Copy URL"}
                       </button>
 
                       <a
@@ -236,7 +258,7 @@ export default function BatchesPage() {
                       </a>
 
                       <div
-                        className={`inline-flex items-center gap-2 rounded-lg border border-outline-variant/24 bg-surface-container-high px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface ${
+                        className={`inline-flex items-center gap-2 rounded-lg border border-outline-variant/45 bg-surface-container-highest/75 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] dark:border-outline-variant/35 dark:bg-surface-container-high dark:shadow-none ${
                           isUpdating ? "opacity-70" : ""
                         }`}
                       >
@@ -247,17 +269,17 @@ export default function BatchesPage() {
                           aria-checked={share.allowDownload}
                           aria-label="Allow download for this batch"
                           disabled={isUpdating}
-                          className={`relative inline-flex h-5 w-10 items-center rounded-full border border-outline-variant/65 shadow-inner transition-colors ${
+                          className={`relative inline-flex h-5 w-10 items-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/55 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-container-high disabled:cursor-not-allowed ${
                             share.allowDownload
-                              ? "bg-primary"
-                              : "bg-surface-container-low"
+                              ? "border-primary/80 bg-primary-container shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] dark:bg-primary"
+                              : "border-outline/80 bg-[rgb(188_199_212_/_0.95)] shadow-[inset_0_1px_2px_rgba(17,28,40,0.22)] dark:border-outline-variant/80 dark:bg-surface-container-low"
                           }`}
                           onClick={() => {
                             void setBatchDownloadAccess(batch.id, !share.allowDownload);
                           }}
                         >
                           <span
-                            className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-white/70 bg-white/95 shadow-sm transition-transform dark:border-slate-200/35 dark:bg-slate-100/85 ${
+                            className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-[rgb(95_109_126_/_0.75)] bg-white shadow-[0_1px_2px_rgba(16,26,38,0.3)] transition-transform dark:border-slate-200/40 dark:bg-slate-100 ${
                               share.allowDownload ? "translate-x-5" : "translate-x-0"
                             }`}
                           />

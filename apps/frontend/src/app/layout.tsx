@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Doto, JetBrains_Mono, Red_Hat_Display, Saira_Stencil_One } from "next/font/google";
 import "@fontsource/material-symbols-outlined";
 import "./globals.css";
 import { PageTransition } from "../components/page-transition";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-body" });
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-headline" });
+const sairaStencil = Saira_Stencil_One({ subsets: ["latin"], weight: "400", variable: "--font-main" });
+const redHatDisplay = Red_Hat_Display({ subsets: ["latin"], variable: "--font-subtitle" });
+const doto = Doto({ subsets: ["latin"], variable: "--font-typewriter" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
@@ -125,7 +126,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: hydrationSanitizerScript }} />
         <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
-      <body suppressHydrationWarning className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
+      <body suppressHydrationWarning className={`${sairaStencil.variable} ${redHatDisplay.variable} ${doto.variable} ${jetbrainsMono.variable}`}>
         <PageTransition>{children}</PageTransition>
       </body>
     </html>

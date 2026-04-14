@@ -35,7 +35,7 @@ function validityLabel(account: AccountInfo | null): string {
     return `${plan} valid until ${validUntil}`;
   }
 
-  return "Signed-in free account: media validity defaults to 6 months per upload.";
+  return "Signed-in free account: media validity defaults to 3 months per upload.";
 }
 
 function accountTypeLabel(account: AccountInfo | null, guestAlias: string): string {
@@ -43,7 +43,7 @@ function accountTypeLabel(account: AccountInfo | null, guestAlias: string): stri
     return `Guest (${guestAlias})`;
   }
 
-  return account.accountType === "SUBSCRIPTION" ? "Subscriber (plan-based validity)" : "Free user (6 months)";
+  return account.accountType === "SUBSCRIPTION" ? "Subscriber (plan-based validity)" : "Free user (3 months)";
 }
 
 function deriveConfirmationPhrase(quote: string): string {

@@ -64,9 +64,10 @@ const config: Config = {
         border: "var(--border)"
       },
       fontFamily: {
-        headline: ["Space Grotesk", "sans-serif"],
-        body: ["Inter", "sans-serif"],
-        label: ["Inter", "sans-serif"],
+        headline: ["var(--font-main)", "Saira Stencil One", "sans-serif"],
+        body: ["var(--font-main)", "Saira Stencil One", "sans-serif"],
+        label: ["var(--font-subtitle)", "Red Hat Display", "sans-serif"],
+        typewriter: ["var(--font-typewriter)", "Doto", "monospace"],
         mono: ["JetBrains Mono", "monospace"]
       },
       borderRadius: {

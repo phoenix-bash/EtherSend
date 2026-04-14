@@ -2,7 +2,7 @@ import { HttpError } from "../../utils/http-error.js";
 import { MediaRepository } from "../media/repository.js";
 import { ImageLinkRepository } from "./repository.js";
 
-const SIX_MONTHS_MS = 1000 * 60 * 60 * 24 * 30 * 6;
+const THREE_MONTHS_MS = 1000 * 60 * 60 * 24 * 30 * 3;
 
 export class ImageLinkService {
   constructor(
@@ -21,7 +21,7 @@ export class ImageLinkService {
     }
 
     const extension = media.extension || "bin";
-    const defaultExpiresAt = new Date(Date.now() + SIX_MONTHS_MS);
+    const defaultExpiresAt = new Date(Date.now() + THREE_MONTHS_MS);
     const expiresAt = media.expiresAt
       ? new Date(Math.min(media.expiresAt.getTime(), defaultExpiresAt.getTime()))
       : defaultExpiresAt;
@@ -34,7 +34,7 @@ export class ImageLinkService {
   }
 
   async renew(imageLinkId: string) {
-    const expiresAt = new Date(Date.now() + SIX_MONTHS_MS);
+    const expiresAt = new Date(Date.now() + THREE_MONTHS_MS);
     return this.imageRepo.renew(imageLinkId, expiresAt);
   }
 }

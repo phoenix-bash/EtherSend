@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@fontsource/material-symbols-outlined": "^5.2.40",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.5.0",
     "lucide-react": "^0.483.0",
@@ -21,12 +23,14 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.0.2"
+    "tailwind-merge": "^3.0.2",
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@types/three": "^0.183.1",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",

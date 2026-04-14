@@ -15,6 +15,7 @@ import {
   updateBatchShare,
   type MediaItem
 } from "../../lib/api-client";
+import { copyTextToClipboard } from "../../lib/clipboard";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT, SYSTEM_LOG_EVENT, type SystemLogLevel } from "../../lib/events";
 import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
 
@@ -31,18 +32,14 @@ interface GeneratedLinkQr {
 
 function getMediaState(item: MediaItem): MediaStateBadge {
   if (!item.isActive) {
-    return { label: "Archived", className: "border-amber-500/40 bg-amber-500/10 text-amber-200" };
+    return { label: "Archived", className: "border-amber-500/40 bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-200" };
   }
 
   if (item.expiresAt && new Date(item.expiresAt).getTime() <= Date.now()) {
-    return { label: "Expired", className: "border-rose-500/40 bg-rose-500/10 text-rose-200" };
+    return { label: "Expired", className: "border-rose-500/40 bg-rose-100 text-rose-800 dark:bg-rose-500/10 dark:text-rose-200" };
   }
 
-  return { label: "Active", className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" };
-}
-
-function shortenIdentifier(identifier: string): string {
-  return identifier.slice(0, 8);
+  return { label: "Active", className: "border-emerald-500/40 bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200" };
 }
 
 export function MediaManager() {
@@ -54,11 +51,25 @@ export function MediaManager() {
   const [batchAllowDownload, setBatchAllowDownload] = useState(false);
   const [batchShareAll, setBatchShareAll] = useState(false);
   const [batchId, setBatchId] = useState<string | null>(null);
-  const [batchShareUrl, setBatchShareUrl] = useState<string | null>(null);
-  const [batchShareExpiresAt, setBatchShareExpiresAt] = useState<string | null>(null);
   const [directLinks, setDirectLinks] = useState<Record<string, { url: string; expiresAt: string }>>({});
   const [generatedLinkQr, setGeneratedLinkQr] = useState<GeneratedLinkQr | null>(null);
+  const [batchCopyState, setBatchCopyState] = useState<"idle" | "copied">("idle");
+  const [actionFlashKey, setActionFlashKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const batchCopyTimerRef = useRef<number | null>(null);
+  const actionFlashTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (batchCopyTimerRef.current) {
+        window.clearTimeout(batchCopyTimerRef.current);
+      }
+
+      if (actionFlashTimerRef.current) {
+        window.clearTimeout(actionFlashTimerRef.current);
+      }
+    };
+  }, []);
 
   function emitSystemLog(message: string, level: SystemLogLevel = "info"): void {
     window.dispatchEvent(new CustomEvent(SYSTEM_LOG_EVENT, { detail: { message, level } }));
@@ -66,6 +77,47 @@ export function MediaManager() {
 
   function emitLibraryChange(): void {
     window.dispatchEvent(new Event(MEDIA_LIBRARY_CHANGED_EVENT));
+  }
+
+  function markBatchCopied(): void {
+    setBatchCopyState("copied");
+    if (batchCopyTimerRef.current) {
+      window.clearTimeout(batchCopyTimerRef.current);
+    }
+
+    batchCopyTimerRef.current = window.setTimeout(() => {
+      setBatchCopyState("idle");
+    }, 1800);
+  }
+
+  function flashAction(actionKey: string): void {
+    setActionFlashKey(actionKey);
+    if (actionFlashTimerRef.current) {
+      window.clearTimeout(actionFlashTimerRef.current);
+    }
+
+    actionFlashTimerRef.current = window.setTimeout(() => {
+      setActionFlashKey((current) => (current === actionKey ? null : current));
+    }, 240);
+  }
+
+  function actionButtonClass(actionKey: string, tone: "default" | "danger" = "default"): string {
+    const flashed = actionFlashKey === actionKey;
+    const shared = "shrink-0 rounded-md border p-1.5 transition-all duration-150";
+
+    if (tone === "danger") {
+      return `${shared} ${
+        flashed
+          ? "border-error/55 bg-error/20 text-error"
+          : "border-outline-variant/35 bg-surface-container-high text-on-surface hover:border-error/45 hover:text-error"
+      }`;
+    }
+
+    return `${shared} ${
+      flashed
+        ? "border-primary/45 bg-primary/20 text-primary"
+        : "border-outline-variant/35 bg-surface-container-high text-on-surface hover:border-primary/45 hover:text-primary"
+    }`;
   }
 
   async function refreshMedia(): Promise<void> {
@@ -101,10 +153,9 @@ export function MediaManager() {
       setBatchShareAll(false);
       setSelectedReplaceId(null);
       setBatchId(null);
-      setBatchShareUrl(null);
-      setBatchShareExpiresAt(null);
       setDirectLinks({});
       setGeneratedLinkQr(null);
+      setBatchCopyState("idle");
       setStatus("");
     }
 
@@ -164,7 +215,7 @@ export function MediaManager() {
       setSelectedReplaceId(null);
       await refreshMedia();
       emitLibraryChange();
-      emitSystemLog(`Media replaced successfully.`, "success");
+      emitSystemLog("Media replaced successfully.", "success");
     } catch {
       setStatus("Failed to replace media.");
     }
@@ -183,9 +234,13 @@ export function MediaManager() {
     try {
       const existing = directLinks[item.id];
       if (existing) {
-        await navigator.clipboard.writeText(existing.url);
-        setStatus("");
-        emitSystemLog(`Direct link copied for ${item.filename}.`);
+        const copied = await copyTextToClipboard(existing.url);
+        if (copied) {
+          setStatus("");
+          emitSystemLog(`Direct link copied for ${item.filename}.`);
+        } else {
+          setStatus(`Direct link ready for ${item.filename}, but copy failed on this device.`);
+        }
         return;
       }
 
@@ -203,9 +258,13 @@ export function MediaManager() {
         label: `Direct link for ${item.filename}`,
         expiresAt: created.link.expiresAt
       });
-      await navigator.clipboard.writeText(url);
-      setStatus("");
-      emitSystemLog(`Direct link generated for ${item.filename}.`, "success");
+      const copied = await copyTextToClipboard(url);
+      if (copied) {
+        setStatus("");
+        emitSystemLog(`Direct link generated for ${item.filename}.`, "success");
+      } else {
+        setStatus(`Direct link generated for ${item.filename}, but copying failed on this device.`);
+      }
     } catch {
       setStatus(`Failed to generate direct link for ${item.filename}.`);
     }
@@ -238,14 +297,20 @@ export function MediaManager() {
       const publicUrl = shareResult.share.publicUrl ?? `${window.location.origin}${shareResult.share.publicPath}`;
 
       setBatchId(batchResult.batch.id);
-      setBatchShareUrl(publicUrl);
-      setBatchShareExpiresAt(shareResult.share.expiresAt);
       setGeneratedLinkQr({
         url: publicUrl,
         label: `Batch share for ${batchResult.batch.name || "Untitled batch"}`,
         expiresAt: shareResult.share.expiresAt
       });
-      setStatus("");
+
+      const copied = await copyTextToClipboard(publicUrl);
+      if (copied) {
+        markBatchCopied();
+        setStatus("");
+      } else {
+        setStatus("Batch share created. Copy failed on this device.");
+      }
+
       emitLibraryChange();
       emitSystemLog(`Batch share generated for ${batchResult.batch.name}.`, "success");
     } catch {
@@ -262,7 +327,16 @@ export function MediaManager() {
 
     try {
       const updated = await updateBatchShare(batchId, nextAllowDownload);
-      setBatchShareExpiresAt(updated.share.expiresAt);
+      setGeneratedLinkQr((current) => {
+        if (!current) {
+          return current;
+        }
+
+        return {
+          ...current,
+          expiresAt: updated.share.expiresAt
+        };
+      });
       setStatus("");
       emitLibraryChange();
       emitSystemLog(nextAllowDownload ? "Batch download access enabled." : "Batch download access disabled.");
@@ -272,35 +346,25 @@ export function MediaManager() {
   }
 
   async function copyBatchShare(): Promise<void> {
-    if (!batchShareUrl) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(batchShareUrl);
-      setStatus("");
-      emitSystemLog("Batch share link copied.");
-    } catch {
-      setStatus("Failed to copy batch share link.");
-    }
-  }
-
-  async function copyGeneratedQrLink(): Promise<void> {
     if (!generatedLinkQr) {
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(generatedLinkQr.url);
+    const copied = await copyTextToClipboard(generatedLinkQr.url);
+    if (copied) {
+      markBatchCopied();
       setStatus("");
-    } catch {
-      setStatus("Failed to copy generated link.");
+      emitSystemLog("Batch share link copied.");
+      return;
     }
+
+    setStatus("Failed to copy batch share link.");
   }
 
   const activeItems = items.filter((item) => item.isActive).length;
   const downloadableItems = items.filter((item) => item.allowDownload).length;
   const batchShareTargetCount = batchShareAll ? items.length : selectedIds.length;
+  const copyButtonLabel = generatedLinkQr?.label.toLowerCase().includes("batch share") ? "Copy share link" : "Copy link";
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-outline-variant/20 bg-surface-container-low/80 p-5 shadow-lift backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-24 before:bg-gradient-to-b before:from-white/35 before:to-transparent dark:before:from-white/10 sm:p-6 md:bg-[linear-gradient(148deg,rgba(255,255,255,0.34),rgba(255,255,255,0.1))] md:shadow-[inset_0_1px_0_rgba(255,255,255,0.52),0_18px_38px_rgba(17,28,48,0.16)] dark:md:bg-[linear-gradient(150deg,rgba(172,198,228,0.1),rgba(172,198,228,0.03))] dark:md:shadow-[inset_0_1px_0_rgba(172,198,228,0.16),0_20px_44px_rgba(0,0,0,0.42)]">
@@ -328,45 +392,47 @@ export function MediaManager() {
             placeholder="Batch name (optional)"
             className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-2.5 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-0 sm:col-span-2 lg:col-span-1"
           />
-          <div className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/24 bg-surface-container-high px-2.5 py-1.5 text-[11px] font-label uppercase tracking-wider text-on-surface">
-            <span>Allow downloads</span>
+          <div className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/45 bg-surface-container-highest/75 px-2.5 py-1.5 text-[11px] uppercase tracking-wider text-on-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] dark:border-outline-variant/35 dark:bg-surface-container-high dark:shadow-none">
+            <span className="font-label">Allow downloads</span>
             <button
               type="button"
               role="switch"
               aria-checked={batchAllowDownload}
               aria-label="Allow downloads for this batch share"
-              className={`relative inline-flex h-5 w-10 items-center rounded-full border border-outline-variant/65 shadow-inner transition-colors ${
+              className={`relative inline-flex h-5 w-10 items-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/55 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-container-high ${
                 batchAllowDownload
-                  ? "bg-primary"
-                  : "bg-surface-container-low"
+                  ? "border-primary/80 bg-primary-container shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] dark:bg-primary"
+                  : "border-outline/80 bg-[rgb(188_199_212_/_0.95)] shadow-[inset_0_1px_2px_rgba(17,28,40,0.22)] dark:border-outline-variant/80 dark:bg-surface-container-low"
               }`}
               onClick={() => {
                 void updateDownloadSetting(!batchAllowDownload);
               }}
             >
               <span
-                className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-white/70 bg-white/95 shadow-sm transition-transform dark:border-slate-200/35 dark:bg-slate-100/85 ${
+                className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-[rgb(95_109_126_/_0.75)] bg-white shadow-[0_1px_2px_rgba(16,26,38,0.3)] transition-transform dark:border-slate-200/40 dark:bg-slate-100 ${
                   batchAllowDownload ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/24 bg-surface-container-high px-2.5 py-1.5 text-[11px] font-label uppercase tracking-wider text-on-surface">
-            <span>Share all</span>
+          <div className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/45 bg-surface-container-highest/75 px-2.5 py-1.5 text-[11px] uppercase tracking-wider text-on-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] dark:border-outline-variant/35 dark:bg-surface-container-high dark:shadow-none">
+            <span className="font-label">Share all</span>
             <button
               type="button"
               role="switch"
               aria-checked={batchShareAll}
               aria-label="Share all media in this batch"
-              className={`relative inline-flex h-5 w-10 items-center rounded-full border border-outline-variant/65 shadow-inner transition-colors ${
-                batchShareAll ? "bg-primary" : "bg-surface-container-low"
+              className={`relative inline-flex h-5 w-10 items-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/55 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-container-high ${
+                batchShareAll
+                  ? "border-primary/80 bg-primary-container shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] dark:bg-primary"
+                  : "border-outline/80 bg-[rgb(188_199_212_/_0.95)] shadow-[inset_0_1px_2px_rgba(17,28,40,0.22)] dark:border-outline-variant/80 dark:bg-surface-container-low"
               }`}
               onClick={() => {
                 setBatchShareAll((current) => !current);
               }}
             >
               <span
-                className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-white/70 bg-white/95 shadow-sm transition-transform dark:border-slate-200/35 dark:bg-slate-100/85 ${
+                className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-[rgb(95_109_126_/_0.75)] bg-white shadow-[0_1px_2px_rgba(16,26,38,0.3)] transition-transform dark:border-slate-200/40 dark:bg-slate-100 ${
                   batchShareAll ? "translate-x-5" : "translate-x-0"
                 }`}
               />
@@ -382,50 +448,27 @@ export function MediaManager() {
           </button>
         </div>
 
-        {batchShareUrl ? (
+        {generatedLinkQr ? (
           <div className="mt-3 rounded-lg border border-outline-variant/20 bg-surface-container-high p-3">
-            <div className="space-y-2">
-              <p className="break-all text-xs text-on-surface">{batchShareUrl}</p>
+            <div className="flex flex-col items-center gap-3 text-center">
+              <p className="text-[10px] font-label uppercase tracking-wider text-on-surface-variant">Share QR</p>
+              <div className="rounded-lg bg-white p-2">
+                <QRCodeSVG value={generatedLinkQr.url} size={120} includeMargin />
+              </div>
+              <p className="text-xs text-on-surface">{generatedLinkQr.label}</p>
+              {generatedLinkQr.expiresAt ? (
+                <p className="text-[10px] uppercase tracking-wider text-primary">Expires: {formatDateTimeDdMmYyyyHm(generatedLinkQr.expiresAt)}</p>
+              ) : null}
               <button
+                type="button"
                 className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2 text-[10px] font-label uppercase tracking-wider text-on-surface transition-all hover:text-primary"
                 onClick={() => {
                   void copyBatchShare();
                 }}
               >
                 <Copy className="h-4 w-4" />
-                Copy share link
+                {batchCopyState === "copied" ? "(Copied)" : copyButtonLabel}
               </button>
-              {batchShareExpiresAt ? (
-                <p className="text-[10px] uppercase tracking-wider text-primary">Expires: {formatDateTimeDdMmYyyyHm(batchShareExpiresAt)}</p>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
-        {generatedLinkQr ? (
-          <div className="mt-3 rounded-lg border border-outline-variant/20 bg-surface-container-high p-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-lg bg-white p-2">
-                <QRCodeSVG value={generatedLinkQr.url} size={104} includeMargin />
-              </div>
-              <div className="min-w-0 flex-1 space-y-2">
-                <p className="text-[10px] font-label uppercase tracking-wider text-on-surface-variant">Share QR</p>
-                <p className="text-xs text-on-surface">{generatedLinkQr.label}</p>
-                <p className="break-all text-xs text-on-surface-variant">{generatedLinkQr.url}</p>
-                {generatedLinkQr.expiresAt ? (
-                  <p className="text-[10px] uppercase tracking-wider text-primary">Expires: {formatDateTimeDdMmYyyyHm(generatedLinkQr.expiresAt)}</p>
-                ) : null}
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container px-3 py-2 text-[10px] font-label uppercase tracking-wider text-on-surface transition-all hover:text-primary"
-                  onClick={() => {
-                    void copyGeneratedQrLink();
-                  }}
-                >
-                  <Copy className="h-4 w-4" />
-                  Copy link
-                </button>
-              </div>
             </div>
           </div>
         ) : null}
@@ -479,9 +522,10 @@ export function MediaManager() {
                         <div className="flex flex-nowrap justify-end gap-1">
                           {item.mimeType.startsWith("image/") ? (
                             <button
-                              className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                              className={actionButtonClass(`${item.id}:direct-link`)}
                               aria-label={directLinks[item.id] ? "copy direct link" : "generate direct link"}
                               onClick={() => {
+                                flashAction(`${item.id}:direct-link`);
                                 void generateOrCopyDirectLink(item);
                               }}
                               title={directLinks[item.id] ? "Copy direct link" : "Generate direct link"}
@@ -490,9 +534,10 @@ export function MediaManager() {
                             </button>
                           ) : null}
                           <button
-                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            className={actionButtonClass(`${item.id}:replace`)}
                             aria-label="replace media"
                             onClick={() => {
+                              flashAction(`${item.id}:replace`);
                               setSelectedReplaceId(item.id);
                               fileInputRef.current?.click();
                             }}
@@ -500,27 +545,30 @@ export function MediaManager() {
                             <RefreshCw className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            className={actionButtonClass(`${item.id}:toggle-active`)}
                             aria-label="toggle active"
                             onClick={() => {
+                              flashAction(`${item.id}:toggle-active`);
                               void toggleActive(item);
                             }}
                           >
                             <Power className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            className={actionButtonClass(`${item.id}:toggle-download`)}
                             aria-label="toggle download"
                             onClick={() => {
+                              flashAction(`${item.id}:toggle-download`);
                               void toggleDownload(item);
                             }}
                           >
                             <Download className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-error"
+                            className={actionButtonClass(`${item.id}:delete`, "danger")}
                             aria-label="delete media"
                             onClick={() => {
+                              flashAction(`${item.id}:delete`);
                               void removeItem(item);
                             }}
                           >
@@ -598,9 +646,10 @@ export function MediaManager() {
                         <div className="flex flex-nowrap justify-end gap-1">
                           {item.mimeType.startsWith("image/") ? (
                             <button
-                              className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                              className={actionButtonClass(`${item.id}:direct-link`)}
                               aria-label={directLinks[item.id] ? "copy direct link" : "generate direct link"}
                               onClick={() => {
+                                flashAction(`${item.id}:direct-link`);
                                 void generateOrCopyDirectLink(item);
                               }}
                               title={directLinks[item.id] ? "Copy direct link" : "Generate direct link"}
@@ -609,9 +658,10 @@ export function MediaManager() {
                             </button>
                           ) : null}
                           <button
-                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            className={actionButtonClass(`${item.id}:replace`)}
                             aria-label="replace media"
                             onClick={() => {
+                              flashAction(`${item.id}:replace`);
                               setSelectedReplaceId(item.id);
                               fileInputRef.current?.click();
                             }}
@@ -619,27 +669,30 @@ export function MediaManager() {
                             <RefreshCw className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            className={actionButtonClass(`${item.id}:toggle-active`)}
                             aria-label="toggle active"
                             onClick={() => {
+                              flashAction(`${item.id}:toggle-active`);
                               void toggleActive(item);
                             }}
                           >
                             <Power className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-primary"
+                            className={actionButtonClass(`${item.id}:toggle-download`)}
                             aria-label="toggle download"
                             onClick={() => {
+                              flashAction(`${item.id}:toggle-download`);
                               void toggleDownload(item);
                             }}
                           >
                             <Download className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            className="shrink-0 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface-variant transition-all hover:text-error"
+                            className={actionButtonClass(`${item.id}:delete`, "danger")}
                             aria-label="delete media"
                             onClick={() => {
+                              flashAction(`${item.id}:delete`);
                               void removeItem(item);
                             }}
                           >

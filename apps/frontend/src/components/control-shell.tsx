@@ -143,6 +143,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const desktopSearchFormRef = useRef<HTMLDivElement | null>(null);
   const mobileSearchFormRef = useRef<HTMLDivElement | null>(null);
+  const searchToggleButtonRef = useRef<HTMLButtonElement | null>(null);
   const desktopSearchInputRef = useRef<HTMLInputElement | null>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
   const latestActivityMsRef = useRef(0);
@@ -231,8 +232,9 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
 
       const insideDesktopSearch = desktopSearchFormRef.current?.contains(target) ?? false;
       const insideMobileSearch = mobileSearchFormRef.current?.contains(target) ?? false;
+      const insideSearchToggle = searchToggleButtonRef.current?.contains(target) ?? false;
 
-      if (!insideDesktopSearch && !insideMobileSearch) {
+      if (!insideDesktopSearch && !insideMobileSearch && !insideSearchToggle) {
         setSuggestionsOpen(false);
         setSearchExpanded(false);
       }
@@ -496,7 +498,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
             aria-label="Close navigation menu"
             style={{ borderRadius: 0 }}
           />
-          <aside className="relative flex h-full w-[84vw] max-w-[320px] animate-[ui-slide-in-left_260ms_ease-out] flex-col border-r border-outline-variant/25 bg-surface-container-low/80 p-3 shadow-xl backdrop-blur-2xl">
+          <aside className="relative flex h-full w-[84vw] max-w-[320px] animate-[ui-slide-in-left_260ms_ease-out] flex-col border-r border-outline-variant/35 bg-surface-container/92 p-3 shadow-2xl backdrop-blur-2xl dark:bg-surface-container-high/88">
             <div className="mb-5 flex items-start justify-between gap-3">
               <Link href="/" className="block">
                 <h1 className="font-headline text-lg font-bold tracking-tight text-on-surface">EtherSend</h1>
@@ -505,7 +507,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
               <button
                 type="button"
                 onClick={() => setMobileNavOpen(false)}
-                className="grid h-8 w-8 place-items-center rounded-full border border-outline-variant/20 bg-surface-container text-on-surface"
+                className="grid h-8 w-8 place-items-center rounded-[0.425rem] border border-outline-variant/30 bg-surface-container-highest/70 text-on-surface-variant transition-colors hover:border-outline-variant/45 hover:text-on-surface"
                 aria-label="Close mobile menu"
               >
                 <span className="material-symbols-outlined text-base">close</span>
@@ -519,8 +521,10 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`nav-option flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
-                      active ? "border border-primary/30 bg-primary/10 text-primary" : "text-on-surface-variant hover:bg-surface-container-high/40 hover:text-on-surface"
+                    className={`nav-option flex items-center gap-3 rounded-[0.425rem] px-3 py-2.5 transition-colors ${
+                      active
+                        ? "border border-primary/35 bg-primary/14 text-primary"
+                        : "border border-outline-variant/25 bg-surface-container-low/55 text-on-surface hover:border-outline-variant/40 hover:bg-surface-container-high/70"
                     }`}
                   >
                     <span className="material-symbols-outlined text-base">{item.icon}</span>
@@ -534,7 +538,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="nav-option flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-on-surface-variant transition-colors hover:bg-surface-container-high/40 hover:text-on-surface"
+                className="nav-option flex w-full items-center gap-3 rounded-[0.425rem] border border-outline-variant/25 bg-surface-container-low/55 px-3 py-2.5 text-on-surface transition-colors hover:border-outline-variant/40 hover:bg-surface-container-high/70"
                 aria-label="Toggle color theme"
               >
                 <span className="material-symbols-outlined text-base">{theme === "dark" ? "dark_mode" : "light_mode"}</span>
@@ -544,7 +548,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
               {user ? (
                 <button
                   type="button"
-                  className="nav-option flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-on-surface-variant transition-colors hover:bg-surface-container-high/40 hover:text-on-surface"
+                  className="nav-option flex w-full items-center gap-3 rounded-[0.425rem] border border-outline-variant/25 bg-surface-container-low/55 px-3 py-2.5 text-on-surface transition-colors hover:border-outline-variant/40 hover:bg-surface-container-high/70"
                   onClick={() => {
                     void signOut();
                   }}
@@ -555,7 +559,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
               ) : (
                 <Link
                   href="/auth/signin"
-                  className="nav-option flex items-center gap-3 rounded-lg px-3 py-2.5 text-on-surface-variant transition-colors hover:bg-surface-container-high/40 hover:text-on-surface"
+                  className="nav-option flex items-center gap-3 rounded-[0.425rem] border border-outline-variant/25 bg-surface-container-low/55 px-3 py-2.5 text-on-surface transition-colors hover:border-outline-variant/40 hover:bg-surface-container-high/70"
                 >
                   <span className="material-symbols-outlined text-base">login</span>
                   <span className="text-xs font-label uppercase tracking-wider">Sign in</span>
@@ -685,7 +689,10 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
             <span className="material-symbols-outlined text-lg">menu</span>
           </button>
 
-          <Link href="/" className="font-headline text-base font-bold tracking-tight text-on-surface md:hidden">
+          <Link
+            href="/"
+            className={`font-headline text-base font-bold tracking-tight text-on-surface md:hidden ${searchExpanded ? "hidden" : ""}`}
+          >
             EtherSend
           </Link>
         </div>
@@ -698,13 +705,13 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
         >
           <div className={searchExpanded ? "animate-[ui-search-expand_260ms_ease-out]" : ""}>
             <form
-              className="relative"
+              className="relative h-9"
               onSubmit={(event) => {
                 event.preventDefault();
                 submitSearch();
               }}
             >
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant">search</span>
+              <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm text-on-surface-variant">search</span>
               <input
                 ref={desktopSearchInputRef}
                 type="text"
@@ -721,11 +728,11 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
                   }
                 }}
                 placeholder={searchPlaceholder}
-                className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest py-2 pl-10 pr-10 text-xs font-label text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-0"
+                className="h-9 w-full rounded-lg border border-outline-variant/35 bg-surface-container-lowest pl-10 pr-12 text-xs font-label text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-0"
               />
               <button
                 type="submit"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md border border-outline-variant/20 bg-surface-container p-1.5 text-on-surface transition-colors hover:text-primary"
+                className="absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md border border-outline-variant/35 bg-surface-container-high text-on-surface-variant transition-colors hover:border-primary/45 hover:text-on-surface"
                 aria-label="Run search"
               >
                 <span className="material-symbols-outlined text-sm">north_east</span>
@@ -733,7 +740,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
             </form>
 
             {suggestionsOpen && normalizedSearch ? (
-              <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 overflow-hidden rounded-lg border border-outline-variant/20 bg-[rgb(248_251_255_/_0.86)] shadow-lg backdrop-blur-xl dark:bg-[rgb(22_30_41_/_0.84)] animate-[ui-fade-in_180ms_ease-out]">
+              <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 overflow-hidden rounded-lg border border-outline-variant/35 bg-[rgb(244_249_255_/_0.96)] shadow-lg backdrop-blur-xl dark:bg-[rgb(22_30_41_/_0.84)] animate-[ui-fade-in_180ms_ease-out]">
                 {suggestions.length === 0 ? (
                   <p className="px-3 py-2 text-xs text-on-surface-variant">No matching suggestions. Press Enter to search all results.</p>
                 ) : null}
@@ -772,17 +779,17 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
         {searchExpanded ? (
           <div
             ref={mobileSearchFormRef}
-            className="absolute left-[3.45rem] right-[3.75rem] top-1/2 z-40 -translate-y-1/2 rounded-full bg-[rgb(248_251_255_/_0.98)] shadow-[0_8px_22px_rgba(18,32,52,0.14)] dark:bg-[rgb(22_30_41_/_0.97)] md:hidden"
+            className="absolute inset-y-0 left-[3.45rem] right-[3.75rem] z-40 flex items-center md:hidden"
           >
-            <div className="animate-[ui-search-expand_260ms_ease-out]">
+            <div className="w-full animate-[ui-search-expand_260ms_ease-out]">
               <form
-                className="relative"
+                className="relative h-9"
                 onSubmit={(event) => {
                   event.preventDefault();
                   submitSearch();
                 }}
               >
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant">search</span>
+                <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm text-on-surface-variant">search</span>
                 <input
                   ref={mobileSearchInputRef}
                   type="text"
@@ -799,18 +806,18 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
                     }
                   }}
                   placeholder={searchPlaceholder}
-                  className="w-full rounded-full border border-outline-variant/20 bg-[rgb(250_252_255_/_0.96)] py-2 pl-9 pr-20 text-xs font-label text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-0 dark:bg-[rgb(27_37_50_/_0.94)]"
+                  className="h-9 w-full rounded-full border border-outline-variant/35 bg-[rgb(250_252_255_/_0.98)] pl-9 pr-[4.9rem] text-xs font-label text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-0 dark:bg-[rgb(27_37_50_/_0.94)]"
                 />
                 <button
                   type="submit"
-                  className="absolute right-9 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full border border-outline-variant/25 bg-[rgb(243_247_253_/_0.98)] text-on-surface transition-colors hover:text-primary dark:bg-[rgb(33_45_60_/_0.94)]"
+                  className="absolute right-9 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full border border-outline-variant/35 bg-[rgb(243_247_253_/_0.98)] text-on-surface-variant transition-colors hover:border-primary/45 hover:text-on-surface dark:bg-[rgb(33_45_60_/_0.94)]"
                   aria-label="Run search"
                 >
                   <span className="material-symbols-outlined text-[15px]">search</span>
                 </button>
                 <button
                   type="button"
-                  className="absolute right-1 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full border border-outline-variant/25 bg-[rgb(243_247_253_/_0.98)] text-on-surface transition-colors hover:text-primary dark:bg-[rgb(33_45_60_/_0.94)]"
+                  className="absolute right-1 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full border border-outline-variant/35 bg-[rgb(243_247_253_/_0.98)] text-on-surface-variant transition-colors hover:border-primary/45 hover:text-on-surface dark:bg-[rgb(33_45_60_/_0.94)]"
                   onClick={() => {
                     setSuggestionsOpen(false);
                     setSearchExpanded(false);
@@ -822,7 +829,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
               </form>
 
               {suggestionsOpen && normalizedSearch ? (
-                <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 overflow-hidden rounded-lg border border-outline-variant/20 bg-[rgb(248_251_255_/_0.86)] shadow-lg backdrop-blur-xl dark:bg-[rgb(22_30_41_/_0.84)] animate-[ui-fade-in_180ms_ease-out]">
+                <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 overflow-hidden rounded-lg border border-outline-variant/35 bg-[rgb(244_249_255_/_0.96)] shadow-lg backdrop-blur-xl dark:bg-[rgb(22_30_41_/_0.84)] animate-[ui-fade-in_180ms_ease-out]">
                   {suggestions.length === 0 ? (
                     <p className="px-3 py-2 text-xs text-on-surface-variant">No matching suggestions. Press Enter to search all results.</p>
                   ) : null}
@@ -862,6 +869,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <button
             type="button"
+            ref={searchToggleButtonRef}
             className={`h-9 w-9 place-items-center rounded-lg border border-outline-variant/20 bg-surface-container-low text-on-surface-variant transition-colors hover:text-primary ${
               searchExpanded ? "hidden md:grid" : "grid"
             }`}
@@ -895,7 +903,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
         </div>
       </header>
 
-      <main className={`min-h-screen px-3 pb-8 md:px-6 ${desktopNavCollapsed ? "md:ml-[4.5rem]" : "md:ml-64"} ${guestBannerVisible ? "pt-24" : "pt-16"}`}>
+      <main className={`min-h-screen px-3 pb-8 md:px-6 ${desktopNavCollapsed ? "md:ml-[4.5rem]" : "md:ml-64"} ${guestBannerVisible ? "pt-[6.5rem]" : "pt-[4.5rem]"}`}>
         <div className="mx-auto w-full max-w-[1240px]">{children}</div>
       </main>
     </div>

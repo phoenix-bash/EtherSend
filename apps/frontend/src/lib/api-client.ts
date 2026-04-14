@@ -10,6 +10,7 @@ function resolveApiBaseUrl(): string {
       window.location.hostname === "127.0.0.1" ||
       window.location.hostname === "::1" ||
       window.location.hostname === "[::1]";
+    const isNextDevServer = window.location.port === "3000";
     const isStandardPort = !window.location.port || window.location.port === "80" || window.location.port === "443";
 
     if (envBaseUrl) {
@@ -25,7 +26,14 @@ function resolveApiBaseUrl(): string {
           return trimTrailingSlashes(parsed.toString());
         }
       } catch {
-        // If env URL is invalid, fall back to hostname-based detection below.
+        const normalizedRelativePath = envBaseUrl.startsWith("/") ? envBaseUrl : `/${envBaseUrl}`;
+
+        // In local Next dev (port 3000), relative /api points to Next itself, not backend.
+        if (isNextDevServer && (normalizedRelativePath === "/api" || normalizedRelativePath.startsWith("/api/"))) {
+          return `${window.location.protocol}//${window.location.hostname}:4000`;
+        }
+
+        return trimTrailingSlashes(`${window.location.origin}${normalizedRelativePath}`);
       }
 
       return trimTrailingSlashes(envBaseUrl);
@@ -44,6 +52,10 @@ function resolveApiBaseUrl(): string {
   }
 
   if (envBaseUrl) {
+    if (!/^https?:\/\//i.test(envBaseUrl) && envBaseUrl.startsWith("/") && process.env.NODE_ENV !== "production") {
+      return "http://localhost:4000";
+    }
+
     return trimTrailingSlashes(envBaseUrl);
   }
 
@@ -503,8 +515,21 @@ export function absoluteApiUrl(path: string): string {
     return path;
   }
 
+  const resolvedApiBaseUrl = (() => {
+    if (/^https?:\/\//i.test(API_BASE_URL)) {
+      return API_BASE_URL;
+    }
+
+    const normalizedBase = API_BASE_URL.startsWith("/") ? API_BASE_URL : `/${API_BASE_URL}`;
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}${normalizedBase}`;
+    }
+
+    return `http://localhost:4000${normalizedBase}`;
+  })();
+
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return `${API_BASE_URL}${normalizedPath}`;
+  return `${trimTrailingSlashes(resolvedApiBaseUrl)}${normalizedPath}`;
 }
 
 export async function logoutSession(): Promise<void> {

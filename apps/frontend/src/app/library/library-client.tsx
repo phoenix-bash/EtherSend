@@ -15,6 +15,7 @@ import {
   toggleMedia,
   type MediaItem
 } from "../../lib/api-client";
+import { copyTextToClipboard } from "../../lib/clipboard";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT } from "../../lib/events";
 import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
 
@@ -126,6 +127,7 @@ export default function MediaLibraryPage() {
   const [directLinks, setDirectLinks] = useState<Record<string, string>>({});
   const [focusedMediaHandled, setFocusedMediaHandled] = useState(false);
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
+  const previewHistoryActiveRef = useRef(false);
 
   async function refreshMedia(): Promise<void> {
     setLoading(true);
@@ -151,6 +153,7 @@ export default function MediaLibraryPage() {
     function onSignedOut(): void {
       setItems([]);
       setOpenMenuId(null);
+      previewHistoryActiveRef.current = false;
       setPreviewItem(null);
       setPreviewObjectUrl((current) => {
         if (current) {
@@ -348,14 +351,59 @@ export default function MediaLibraryPage() {
       return;
     }
 
+    if (!previewHistoryActiveRef.current) {
+      window.history.pushState({ ...window.history.state, lfMediaPreview: true }, "");
+      previewHistoryActiveRef.current = true;
+    }
+
     setPreviewItem(item);
   }
 
-  function closePreview(): void {
+  function closePreview(fromPopState = false): void {
+    if (!fromPopState && previewHistoryActiveRef.current) {
+      window.history.back();
+      return;
+    }
+
+    previewHistoryActiveRef.current = false;
     setPreviewItem(null);
     setPreviewError(null);
     setPreviewLoading(false);
   }
+
+  useEffect(() => {
+    function onPopState(): void {
+      if (!previewHistoryActiveRef.current) {
+        return;
+      }
+
+      closePreview(true);
+    }
+
+    window.addEventListener("popstate", onPopState);
+
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!previewItem) {
+      return;
+    }
+
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key === "Escape") {
+        closePreview();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [previewItem]);
 
   async function onGenerateDirectLink(item: MediaItem): Promise<void> {
     setOpenMenuId(null);
@@ -367,8 +415,12 @@ export default function MediaLibraryPage() {
     try {
       const existing = directLinks[item.id];
       if (existing) {
-        await navigator.clipboard.writeText(existing);
-        setStatus(`Direct link copied for ${item.filename}.`);
+        const copied = await copyTextToClipboard(existing);
+        if (copied) {
+          setStatus(`Direct link copied for ${item.filename}.`);
+        } else {
+          setStatus(`Direct link ready for ${item.filename}, but copy failed on this device.`);
+        }
         return;
       }
 
@@ -378,8 +430,12 @@ export default function MediaLibraryPage() {
         ...current,
         [item.id]: url
       }));
-      await navigator.clipboard.writeText(url);
-      setStatus(`Direct link generated for ${item.filename}.`);
+      const copied = await copyTextToClipboard(url);
+      if (copied) {
+        setStatus(`Direct link generated for ${item.filename}.`);
+      } else {
+        setStatus(`Direct link generated for ${item.filename}, but copying failed on this device.`);
+      }
     } catch {
       setStatus(`Failed to generate direct link for ${item.filename}.`);
     }
@@ -794,13 +850,13 @@ export default function MediaLibraryPage() {
 
         {previewItem ? (
           <div
-            className="fixed inset-0 z-[70] flex items-end justify-center bg-[rgb(20_24_30_/_0.86)] p-3 sm:items-center sm:p-5"
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgb(20_24_30_/_0.86)] p-3 sm:p-5"
             onClick={() => {
               closePreview();
             }}
           >
             <div
-              className="flex h-[90vh] w-full max-w-6xl flex-col rounded-xl border border-outline-variant/20 bg-surface-container p-3 sm:p-5"
+              className="flex h-[min(88vh,46rem)] w-full max-w-6xl flex-col rounded-xl border border-outline-variant/20 bg-surface-container p-3 sm:p-5"
               onClick={(event) => {
                 event.stopPropagation();
               }}
