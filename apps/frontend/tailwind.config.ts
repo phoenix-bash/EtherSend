@@ -64,11 +64,14 @@ const config: Config = {
         border: "var(--border)"
       },
       fontFamily: {
-        headline: ["var(--font-main)", "Saira Stencil One", "sans-serif"],
-        body: ["var(--font-main)", "Saira Stencil One", "sans-serif"],
-        label: ["var(--font-subtitle)", "Red Hat Display", "sans-serif"],
-        typewriter: ["var(--font-typewriter)", "Doto", "monospace"],
-        mono: ["JetBrains Mono", "monospace"]
+        sans: ["var(--font-main)", "Syne", "sans-serif"],
+        display: ["var(--font-display)", "Bebas Neue", "sans-serif"],
+        mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
+        headline: ["var(--font-display)", "Bebas Neue", "sans-serif"],
+        body: ["var(--font-main)", "Syne", "sans-serif"],
+        label: ["var(--font-subtitle)", "JetBrains Mono", "monospace"],
+        typewriter: ["var(--font-typewriter)", "JetBrains Mono", "monospace"],
+        monoAlt: ["JetBrains Mono", "monospace"]
       },
       borderRadius: {
         DEFAULT: "0.125rem",

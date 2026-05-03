@@ -31,6 +31,10 @@ function isMultipartFileTruncated(file: MultipartFile): boolean {
 export class MediaService {
   constructor(private readonly repository: MediaRepository) {}
 
+  private resolveStoragePath(mediaId: string, fileName: string, version: string): string {
+    return `s3://${env.V2_S3_BUCKET}/media/${mediaId}/${version}-${fileName}`;
+  }
+
   private async assertSignedInCanStore(userId: string, fileBytes: number, excludeMediaId?: string): Promise<void> {
     const usage = await prisma.mediaFile.aggregate({
       where: {
@@ -73,7 +77,7 @@ export class MediaService {
 
     const mimeType = input.file.mimetype || lookupMime(input.file.filename || "") || "application/octet-stream";
     const mediaId = randomUUID();
-    const storagePath = `media/${mediaId}/v1-${input.file.filename}`;
+    const storagePath = this.resolveStoragePath(mediaId, input.file.filename, "v1");
 
     if (ownerType === "GUEST" && input.guestSessionId) {
       await guestService.assertGuestCanUpload(input.guestSessionId, 0);
@@ -150,7 +154,7 @@ export class MediaService {
       throw new HttpError(404, "Media not found");
     }
 
-    const storagePath = `media/${mediaId}/v${Date.now()}-${file.filename}`;
+    const storagePath = this.resolveStoragePath(mediaId, file.filename, `v${Date.now()}`);
     await storage.replace({ stream: file.file, path: storagePath });
 
     const fileBytes = getUploadedByteCount(file);

@@ -151,19 +151,19 @@ function TransferFlow({ theme }: { theme: ThemeMode }) {
     });
 
     if (worldRef.current) {
-      worldRef.current.rotation.y = THREE.MathUtils.lerp(worldRef.current.rotation.y, state.pointer.x * 0.16, 0.05);
-      worldRef.current.rotation.x = THREE.MathUtils.lerp(worldRef.current.rotation.x, -state.pointer.y * 0.08, 0.05);
-      worldRef.current.position.x = THREE.MathUtils.lerp(worldRef.current.position.x, state.pointer.x * 0.22, 0.04);
-      worldRef.current.position.y = THREE.MathUtils.lerp(worldRef.current.position.y, state.pointer.y * 0.14, 0.04);
+      worldRef.current.rotation.y = THREE.MathUtils.lerp(worldRef.current.rotation.y, state.pointer.x * 0.11, 0.045);
+      worldRef.current.rotation.x = THREE.MathUtils.lerp(worldRef.current.rotation.x, -state.pointer.y * 0.055, 0.045);
+      worldRef.current.position.x = THREE.MathUtils.lerp(worldRef.current.position.x, state.pointer.x * 0.12, 0.04);
+      worldRef.current.position.y = THREE.MathUtils.lerp(worldRef.current.position.y, state.pointer.y * 0.08, 0.04);
     }
 
-    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, state.pointer.x * 0.36, 0.05);
-    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, state.pointer.y * 0.2, 0.05);
+    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, state.pointer.x * 0.2, 0.05);
+    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, state.pointer.y * 0.12, 0.05);
     state.camera.lookAt(0, 0, 0);
   });
 
   return (
-    <group ref={worldRef} scale={[0.98, 0.98, 0.98]}>
+    <group ref={worldRef} scale={[0.88, 0.88, 0.88]}>
       <mesh position={start}>
         <sphereGeometry args={[0.12, 24, 24]} />
         <meshBasicMaterial color={colors.source} />
@@ -246,11 +246,11 @@ function TransferFlow({ theme }: { theme: ThemeMode }) {
 }
 
 export function LandingFlowScene({ theme }: LandingFlowSceneProps) {
-  const cameraPosition: [number, number, number] = theme === "dark" ? [0, 0.02, 5.36] : [0, 0.02, 5.24];
+  const cameraPosition: [number, number, number] = theme === "dark" ? [0, 0.02, 5.86] : [0, 0.02, 5.72];
 
   return (
-    <div className="landing-flow-orb relative aspect-[8/5] w-full overflow-hidden rounded-[2.2rem] border border-outline-variant/20 bg-surface-container-low/28 dark:bg-surface-container-low/18 md:aspect-[16/9]">
-      <div className="landing-flow-canvas-shell absolute inset-1 overflow-hidden rounded-[1.72rem] md:inset-2 md:rounded-[1.6rem]">
+    <div className="landing-flow-orb relative mx-auto aspect-[7.5/5] w-full max-w-[42rem] overflow-hidden md:aspect-[15/9]">
+      <div className="landing-flow-canvas-shell absolute inset-0 overflow-hidden">
         <Canvas dpr={[1, 1.5]} camera={{ position: cameraPosition, fov: 45 }} gl={{ antialias: true, alpha: true, stencil: true }}>
           <ambientLight intensity={theme === "dark" ? 0.55 : 0.66} />
           <pointLight position={[2.8, 2.8, 3.2]} intensity={theme === "dark" ? 1.12 : 0.95} color={theme === "dark" ? "#aeb6bf" : "#859eb9"} />

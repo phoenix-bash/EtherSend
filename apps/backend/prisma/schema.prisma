@@ -39,6 +39,14 @@ enum AccountType {
   SUBSCRIPTION
 }
 
+enum V2UploadStatus {
+  PENDING
+  UPLOADING
+  COMPLETED
+  FAILED
+  ABORTED
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -50,6 +58,8 @@ model User {
   emailVerificationTokenExpiresAt DateTime?
   passwordResetTokenHash String? @unique
   passwordResetTokenExpiresAt DateTime?
+  accountDeletionCodeHash String?
+  accountDeletionCodeExpiresAt DateTime?
   role         UserRole @default(USER)
   accountType  AccountType @default(FREE_6M)
   planName     String?
@@ -183,6 +193,9 @@ model BatchShareToken {
   batchId       String    @unique
   token         String    @unique
   allowDownload Boolean   @default(false)
+  hideFilenames Boolean   @default(false)
+  passwordHash  String?
+  previewViewLimit Int?
   expiresAt     DateTime
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -238,4 +251,83 @@ model AccessLog {
   ipAddress   String?
   userAgent   String?
   createdAt   DateTime @default(now())
+}
+
+model AdminAccessToken {
+  id                String   @id @default(uuid())
+  jtiHash           String   @unique
+  userId            String
+  superuserEmail    String
+  challengeHash     String?  @unique
+  challengeExpiresAt DateTime?
+  challengeUsedAt   DateTime?
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  createdAt         DateTime @default(now())
+  ipAddress         String?
+  userAgent         String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([consumedAt])
+  @@index([challengeExpiresAt])
+}
+
+model AdminSession {
+  id               String   @id @default(uuid())
+  sessionTokenHash String   @unique
+  userId           String
+  superuserEmail   String
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime @default(now())
+  lastActivityAt   DateTime @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  revokeReason     String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@index([lastActivityAt])
+}
+
+model AdminAuditLog {
+  id             String   @id @default(uuid())
+  superuserEmail String
+  action         String
+  status         String
+  ipAddress      String?
+  userAgent      String?
+  targetUserId   String?
+  details        Json?
+  createdAt      DateTime @default(now())
+
+  @@index([action])
+  @@index([status])
+  @@index([targetUserId])
+  @@index([createdAt])
+}
+
+model V2Upload {
+  id          String         @id @default(uuid())
+  fileId      String         @unique @map("file_id")
+  userId      String         @map("user_id")
+  fileName    String         @map("file_name")
+  fileSize    BigInt         @map("file_size")
+  mimeType    String?        @map("mime_type")
+  s3Key       String         @map("s3_key")
+  s3Bucket    String         @map("s3_bucket")
+  status      V2UploadStatus
+  uploadId    String?        @map("upload_id")
+  etags       Json?
+  fileUrl     String?        @map("file_url")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  completedAt DateTime?      @map("completed_at")
+  metadata    Json?
+
+  @@index([userId], map: "idx_v2_uploads_user_id")
+  @@index([status], map: "idx_v2_uploads_status")
+  @@index([fileId], map: "idx_v2_uploads_file_id")
+  @@map("v2_uploads")
 }

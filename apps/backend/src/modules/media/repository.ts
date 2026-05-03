@@ -2,6 +2,7 @@ import type { MediaFile, OwnerType } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 
 export interface CreateMediaRecordInput {
+  id?: string;
   ownerType: OwnerType;
   userId?: string;
   guestSessionId?: string;

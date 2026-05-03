@@ -28,8 +28,14 @@ function resolveApiBaseUrl(): string {
       } catch {
         const normalizedRelativePath = envBaseUrl.startsWith("/") ? envBaseUrl : `/${envBaseUrl}`;
 
-        // In local Next dev (port 3000), relative /api points to Next itself, not backend.
-        if (isNextDevServer && (normalizedRelativePath === "/api" || normalizedRelativePath.startsWith("/api/"))) {
+        // In local Next dev, relative /api points to Next itself, not backend.
+        // Handle both default (3000) and auto-shifted dev ports (3001, 3002, ...).
+        if (
+          !isStandardPort &&
+          process.env.NODE_ENV !== "production" &&
+          (isNextDevServer || Number(window.location.port) >= 3000) &&
+          (normalizedRelativePath === "/api" || normalizedRelativePath.startsWith("/api/"))
+        ) {
           return `${window.location.protocol}//${window.location.hostname}:4000`;
         }
 
@@ -66,6 +72,15 @@ export const API_BASE_URL = resolveApiBaseUrl();
 
 const ACCESS_TOKEN_KEY = "lf_access_token";
 
+function resolveUserTimeZone(): string | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return typeof timeZone === "string" && timeZone.trim().length > 0 ? timeZone : undefined;
+}
+
 export class ApiError extends Error {
   status: number;
   details?: unknown;
@@ -76,6 +91,33 @@ export class ApiError extends Error {
     this.details = details;
     this.name = "ApiError";
   }
+}
+
+export function extractApiErrorCode(error: ApiError): string | undefined {
+  if (!error.details || typeof error.details !== "object") {
+    return undefined;
+  }
+
+  const maybeCode = (error.details as { code?: unknown }).code;
+  return typeof maybeCode === "string" ? maybeCode : undefined;
+}
+
+export function resolveSecurityTeaseMessage(error: ApiError): string | null {
+  const code = extractApiErrorCode(error);
+
+  if (code === "SHARE_PASSWORD_INVALID") {
+    return "Nope. Nice guess, but that password is wrong.";
+  }
+
+  if (code === "RATE_LIMITED") {
+    return "Easy there, speed-runner. Cooldown active.";
+  }
+
+  if (code === "CSRF_BLOCKED") {
+    return "That move is blocked. Try a legit request path.";
+  }
+
+  return null;
 }
 
 export interface AuthUser {
@@ -136,10 +178,14 @@ export interface MediaItem {
 export interface ImageLinkResult {
   link: {
     id: string;
-    extension: string;
     expiresAt: string;
   };
   directUrl: string;
+}
+
+export interface StorageLimits {
+  guestStorageCapBytes: number;
+  signedInStorageCapBytes: number;
 }
 
 export interface QrResult {
@@ -160,6 +206,9 @@ export interface CreatedBatch {
 export interface BatchShareResult {
   token: string;
   allowDownload: boolean;
+  hideFilenames: boolean;
+  hasPassword: boolean;
+  previewViewLimit: number | null;
   expiresAt: string;
   publicPath: string;
   publicUrl?: string;
@@ -173,6 +222,7 @@ export interface BatchListItem {
   share: {
     token: string;
     allowDownload: boolean;
+    hideFilenames: boolean;
     expiresAt: string;
     publicPath: string;
     publicUrl?: string;
@@ -191,7 +241,11 @@ export interface PublicShareFile {
 export interface PublicBatchShare {
   token: string;
   allowDownload: boolean;
+  hideFilenames: boolean;
+  hasPassword: boolean;
+  previewViewLimit: number | null;
   expiresAt: string;
+  sharedBy: string;
   batch: {
     id: string;
     name?: string | null;
@@ -206,6 +260,9 @@ export interface ActivityFeedItem {
   level: "info" | "success" | "warning";
   createdAt: string;
 }
+
+const V2_UPLOAD_RETRY_BACKOFF_MS = [1000, 2000, 4000];
+const V2_UPLOAD_MAX_CHUNK_CONCURRENCY = 5;
 
 export function setAccessToken(token: string): void {
   if (typeof window === "undefined") {
@@ -316,9 +373,43 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   return response.json() as Promise<T>;
 }
 
-export async function fetchCurrentUser(): Promise<AuthUser | null> {
-  if (!getUsableAccessToken()) {
+async function refreshAccessToken(): Promise<string | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: "{}"
+    });
+
+    if (!response.ok) {
+      clearAccessToken();
+      return null;
+    }
+
+    const payload = (await response.json()) as { accessToken?: string };
+    if (!payload.accessToken) {
+      clearAccessToken();
+      return null;
+    }
+
+    setAccessToken(payload.accessToken);
+    return payload.accessToken;
+  } catch {
+    clearAccessToken();
     return null;
+  }
+}
+
+export async function fetchCurrentUser(): Promise<AuthUser | null> {
+  let token = getUsableAccessToken();
+  if (!token) {
+    token = await refreshAccessToken();
+    if (!token) {
+      return null;
+    }
   }
 
   try {
@@ -326,7 +417,17 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     return result.user;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
-      clearAccessToken();
+      const refreshedToken = await refreshAccessToken();
+      if (!refreshedToken) {
+        return null;
+      }
+
+      try {
+        const retried = await apiRequest<{ user: AuthUser | null }>("/auth/me");
+        return retried.user;
+      } catch {
+        clearAccessToken();
+      }
     }
 
     return null;
@@ -398,11 +499,232 @@ export function revokeActiveSession(sessionId: string): Promise<{ ok: boolean; c
   });
 }
 
-export function deleteAccountPermanently(confirmation: string): Promise<{ ok: boolean }> {
+export function requestAccountDeletionVerification(confirmation: string): Promise<{ ok: boolean }> {
+  const timeZone = resolveUserTimeZone();
+  return apiRequest<{ ok: boolean }>("/auth/account/delete-verification", {
+    method: "POST",
+    body: JSON.stringify({ confirmation, timeZone })
+  });
+}
+
+export function deleteAccountPermanently(confirmation: string, verificationCode: string): Promise<{ ok: boolean }> {
   return apiRequest<{ ok: boolean }>("/auth/account", {
     method: "DELETE",
-    body: JSON.stringify({ confirmation })
+    body: JSON.stringify({ confirmation, verificationCode })
   });
+}
+
+function isV2PrimaryUploadEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_ENABLE_V2_UPLOAD === "true";
+}
+
+function isV2LegacyFallbackEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_V2_UPLOAD_FALLBACK_TO_V1 === "true";
+}
+
+function resolveV2ApiPath(path: string): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  if (API_BASE_URL.endsWith("/api")) {
+    return `/v2${normalizedPath}`;
+  }
+
+  return `/api/v2${normalizedPath}`;
+}
+
+async function withV2Retry<T>(operation: () => Promise<T>): Promise<T> {
+  const maxAttempts = V2_UPLOAD_RETRY_BACKOFF_MS.length + 1;
+  let attempt = 0;
+
+  while (attempt < maxAttempts) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt >= maxAttempts - 1) {
+        throw error;
+      }
+
+      await new Promise((resolve) => window.setTimeout(resolve, V2_UPLOAD_RETRY_BACKOFF_MS[attempt]));
+      attempt += 1;
+    }
+  }
+
+  throw new Error("Upload retry loop terminated unexpectedly.");
+}
+
+async function putToSignedUrl(url: string, blob: Blob, contentType?: string): Promise<{ etag?: string }> {
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: contentType ? { "Content-Type": contentType } : undefined,
+    body: blob
+  });
+
+  if (!response.ok) {
+    throw new Error(`Signed URL upload failed with status ${response.status}`);
+  }
+
+  return {
+    etag: response.headers.get("ETag") ?? undefined
+  };
+}
+
+interface V2UploadInitDirectResponse {
+  fileId: string;
+  uploadId: null;
+  useMultipart: false;
+  signedUrl: string;
+  key: string;
+}
+
+interface V2UploadInitMultipartResponse {
+  fileId: string;
+  uploadId: string;
+  useMultipart: true;
+  chunkSize: number;
+  signedUrls: string[];
+  key: string;
+}
+
+type V2UploadInitResponse = V2UploadInitDirectResponse | V2UploadInitMultipartResponse;
+
+interface V2UploadCompleteResponse {
+  success: true;
+  fileId: string;
+  fileUrl: string;
+  media?: MediaItem;
+}
+
+async function uploadMediaViaV2(file: File): Promise<{ media: MediaItem }> {
+  const init = await apiRequest<V2UploadInitResponse>(resolveV2ApiPath("/upload/init"), {
+    method: "POST",
+    body: JSON.stringify({
+      fileName: file.name,
+      fileSize: file.size,
+      mimeType: file.type || "application/octet-stream"
+    })
+  });
+
+  if (!init.useMultipart) {
+    await withV2Retry(async () => {
+      await putToSignedUrl(init.signedUrl, file, file.type || "application/octet-stream");
+    });
+
+    const completed = await apiRequest<V2UploadCompleteResponse>(resolveV2ApiPath("/upload/complete"), {
+      method: "POST",
+      body: JSON.stringify({
+        fileId: init.fileId,
+        key: init.key,
+        uploadId: null,
+        parts: []
+      })
+    });
+
+    if (!completed.media) {
+      throw new Error("V2 upload completed without media metadata.");
+    }
+
+    return { media: completed.media };
+  }
+
+  const chunkSize = init.chunkSize;
+  const totalParts = Math.ceil(file.size / chunkSize);
+  const completedParts = new Map<number, string>();
+  const pendingPartNumbers: number[] = [];
+
+  for (let partNumber = 1; partNumber <= totalParts; partNumber += 1) {
+    pendingPartNumbers.push(partNumber);
+  }
+
+  const uploadPart = async (partNumber: number): Promise<void> => {
+    const start = (partNumber - 1) * chunkSize;
+    const end = Math.min(file.size, start + chunkSize);
+    const blob = file.slice(start, end);
+
+    await withV2Retry(async () => {
+      let signedUrl = init.signedUrls[partNumber - 1];
+      if (!signedUrl) {
+        const chunk = await apiRequest<{ url: string; partNumber: number }>(resolveV2ApiPath("/upload/chunk"), {
+          method: "POST",
+          body: JSON.stringify({
+            uploadId: init.uploadId,
+            key: init.key,
+            partNumber
+          })
+        });
+        signedUrl = chunk.url;
+      }
+
+      try {
+        const result = await putToSignedUrl(signedUrl, blob);
+        const etag = result.etag?.trim();
+        if (!etag) {
+          throw new Error("Missing ETag for uploaded part.");
+        }
+        completedParts.set(partNumber, etag);
+      } catch (error) {
+        const chunk = await apiRequest<{ url: string; partNumber: number }>(resolveV2ApiPath("/upload/chunk"), {
+          method: "POST",
+          body: JSON.stringify({
+            uploadId: init.uploadId,
+            key: init.key,
+            partNumber
+          })
+        });
+
+        const retryResult = await putToSignedUrl(chunk.url, blob);
+        const retryEtag = retryResult.etag?.trim();
+        if (!retryEtag) {
+          throw error;
+        }
+
+        completedParts.set(partNumber, retryEtag);
+      }
+    });
+  };
+
+  const workerCount = Math.max(1, Math.min(V2_UPLOAD_MAX_CHUNK_CONCURRENCY, pendingPartNumbers.length));
+  let pointer = 0;
+
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (pointer < pendingPartNumbers.length) {
+      const current = pointer;
+      pointer += 1;
+      await uploadPart(pendingPartNumbers[current]);
+    }
+  });
+
+  try {
+    await Promise.all(workers);
+  } catch (error) {
+    await apiRequest<{ success: true }>(resolveV2ApiPath("/upload/abort"), {
+      method: "POST",
+      body: JSON.stringify({
+        uploadId: init.uploadId,
+        key: init.key
+      })
+    }).catch(() => undefined);
+
+    throw error;
+  }
+
+  const parts = Array.from(completedParts.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([PartNumber, ETag]) => ({ PartNumber, ETag }));
+
+  const completed = await apiRequest<V2UploadCompleteResponse>(resolveV2ApiPath("/upload/complete"), {
+    method: "POST",
+    body: JSON.stringify({
+      fileId: init.fileId,
+      key: init.key,
+      uploadId: init.uploadId,
+      parts
+    })
+  });
+
+  if (!completed.media) {
+    throw new Error("V2 upload completed without media metadata.");
+  }
+
+  return { media: completed.media };
 }
 
 async function uploadFile(path: string, file: File): Promise<{ media: MediaItem }> {
@@ -430,8 +752,28 @@ async function uploadFile(path: string, file: File): Promise<{ media: MediaItem 
   return response.json() as Promise<{ media: MediaItem }>;
 }
 
-export function uploadMedia(file: File): Promise<{ media: MediaItem }> {
-  return uploadFile("/media/upload", file);
+export async function uploadMedia(file: File): Promise<{ media: MediaItem }> {
+  if (!isV2PrimaryUploadEnabled()) {
+    return uploadFile("/media/upload", file);
+  }
+
+  try {
+    return await uploadMediaViaV2(file);
+  } catch (error) {
+    if (isV2LegacyFallbackEnabled()) {
+      return uploadFile("/media/upload", file);
+    }
+
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    if (error instanceof Error) {
+      throw new ApiError(500, error.message);
+    }
+
+    throw new ApiError(500, "Upload failed");
+  }
 }
 
 export function replaceMedia(mediaId: string, file: File): Promise<{ media: MediaItem }> {
@@ -440,6 +782,10 @@ export function replaceMedia(mediaId: string, file: File): Promise<{ media: Medi
 
 export function listMedia(): Promise<{ items: MediaItem[] }> {
   return apiRequest<{ items: MediaItem[] }>("/media");
+}
+
+export function getStorageLimits(): Promise<StorageLimits> {
+  return apiRequest<StorageLimits>("/limits");
 }
 
 export function toggleMedia(mediaId: string, payload: { isActive?: boolean; allowDownload?: boolean }) {
@@ -474,27 +820,197 @@ export function listBatches(): Promise<{ items: BatchListItem[] }> {
   return apiRequest<{ items: BatchListItem[] }>("/batches");
 }
 
+export async function deleteBatch(batchId: string): Promise<void> {
+  await apiRequest<unknown>(`/batches/${batchId}`, {
+    method: "DELETE"
+  });
+}
+
 export function listActivity(limit = 20): Promise<{ items: ActivityFeedItem[] }> {
   const resolvedLimit = Math.max(1, Math.min(100, Math.floor(limit)));
   return apiRequest<{ items: ActivityFeedItem[] }>(`/activity?limit=${resolvedLimit}`);
 }
 
-export function createOrRefreshBatchShare(batchId: string, allowDownload?: boolean): Promise<{ share: BatchShareResult }> {
+export function createOrRefreshBatchShare(
+  batchId: string,
+  allowDownload?: boolean,
+  hideFilenames?: boolean,
+  password?: string,
+  previewViewLimit?: number,
+  customExpiry?: { expiresAt?: string; durationMinutes?: number }
+): Promise<{ share: BatchShareResult }> {
   return apiRequest<{ share: BatchShareResult }>(`/batches/${batchId}/share`, {
     method: "POST",
-    body: JSON.stringify({ allowDownload })
+    body: JSON.stringify({
+      allowDownload,
+      hideFilenames,
+      password,
+      previewViewLimit,
+      expiresAt: customExpiry?.expiresAt,
+      durationMinutes: customExpiry?.durationMinutes
+    })
   });
 }
 
-export function updateBatchShare(batchId: string, allowDownload: boolean): Promise<{ share: BatchShareResult }> {
+export function updateBatchShare(
+  batchId: string,
+  allowDownload: boolean,
+  hideFilenames?: boolean,
+  password?: string,
+  previewViewLimit?: number
+): Promise<{ share: BatchShareResult }> {
   return apiRequest<{ share: BatchShareResult }>(`/batches/${batchId}/share`, {
     method: "PATCH",
-    body: JSON.stringify({ allowDownload })
+    body: JSON.stringify({ allowDownload, hideFilenames, password, previewViewLimit })
   });
 }
 
-export function fetchPublicBatchShare(token: string): Promise<PublicBatchShare> {
-  return apiRequest<PublicBatchShare>(`/shares/${token}`);
+export function sendBatchShareEmail(batchId: string, recipientEmail: string): Promise<{ ok: boolean; expiresAt: string; hasPassword: boolean }> {
+  const timeZone = resolveUserTimeZone();
+  return apiRequest<{ ok: boolean; expiresAt: string; hasPassword: boolean }>(`/batches/${batchId}/share/email`, {
+    method: "POST",
+    body: JSON.stringify({ recipientEmail, timeZone })
+  });
+}
+
+export interface DominatorOverview {
+  users: {
+    totalRegistered: number;
+    totalGuests: number;
+    totalOverall: number;
+    activeUsers: number;
+    activeGuests: number;
+    activeLoggedInUsers: number;
+  };
+  files: {
+    totalUploadedFiles: number;
+    totalActiveSharedLinks: number;
+    totalStorageBytes: string;
+    storageBreakdown: {
+      imagesBytes: string;
+      videosBytes: string;
+      documentsBytes: string;
+      othersBytes: string;
+    };
+  };
+  system: {
+    serverUptimeSeconds: number;
+    databaseSizeBytes: string;
+    activeSessions: number;
+    recentUploadsCount: number;
+    recentRegistrationsCount: number;
+  };
+}
+
+export function requestDominatorActivationToken(): Promise<{ token: string; expiresInSeconds: number }> {
+  return apiRequest<{ token: string; expiresInSeconds: number }>("/dominator/access/ignite", {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export function consumeDominatorActivationToken(token: string): Promise<{ challengeToken: string }> {
+  return apiRequest<{ challengeToken: string }>("/dominator/access/consume", {
+    method: "POST",
+    body: JSON.stringify({ token })
+  });
+}
+
+export function createDominatorSession(email: string, password: string, challengeToken: string): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>("/dominator/session", {
+    method: "POST",
+    body: JSON.stringify({ email, password, challengeToken })
+  });
+}
+
+export function fetchDominatorSession(): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>("/dominator/session/me");
+}
+
+export function logoutDominatorSession(): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>("/dominator/session", {
+    method: "DELETE"
+  });
+}
+
+export function fetchDominatorOverview(): Promise<{ overview: DominatorOverview }> {
+  return apiRequest<{ overview: DominatorOverview }>("/dominator/overview");
+}
+
+export function searchDominatorUsers(query?: string, page = 1, pageSize = 20): Promise<{
+  total: number;
+  items: Array<{ id: string; email: string; name: string | null; createdAt: string }>;
+}> {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("pageSize", String(pageSize));
+  if (query && query.trim()) {
+    params.set("query", query.trim());
+  }
+
+  return apiRequest(`/dominator/users?${params.toString()}`);
+}
+
+export function fetchDominatorUser(userId: string): Promise<{
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    createdAt: string;
+    storageBytes: string;
+    uploadedFilesCount: number;
+    activeLinksCount: number;
+    lastLoginAt: string | null;
+    ipHistory: string[];
+    accountType: string;
+  };
+}> {
+  return apiRequest(`/dominator/users/${userId}`);
+}
+
+export function fetchDominatorUserFiles(userId: string, page = 1, pageSize = 20): Promise<{
+  total: number;
+  items: Array<{
+    id: string;
+    filename: string;
+    mimeType: string;
+    sizeBytes: string;
+    createdAt: string;
+    expiresAt: string | null;
+    isActive: boolean;
+  }>;
+}> {
+  return apiRequest(`/dominator/users/${userId}/files?page=${page}&pageSize=${pageSize}`);
+}
+
+export function deleteDominatorUser(userId: string, superuserPassword: string): Promise<{ ok: boolean }> {
+  return apiRequest(`/dominator/users/${userId}`, {
+    method: "DELETE",
+    body: JSON.stringify({ superuserPassword })
+  });
+}
+
+export function deleteDominatorFile(mediaId: string, superuserPassword: string): Promise<{ ok: boolean }> {
+  return apiRequest(`/dominator/files/${mediaId}`, {
+    method: "DELETE",
+    body: JSON.stringify({ superuserPassword })
+  });
+}
+
+export function fetchDominatorLiveActivity(): Promise<{ activity: { onlineUsers: number; uploadingUsers: number; activeSessions: number; activeGuests: number } }> {
+  return apiRequest("/dominator/live-activity");
+}
+
+export function fetchDominatorAuditLogs(take = 100): Promise<{
+  logs: Array<{ id: string; action: string; status: string; ipAddress: string | null; targetUserId: string | null; createdAt: string }>;
+}> {
+  return apiRequest(`/dominator/audit-logs?take=${take}`);
+}
+
+export function fetchPublicBatchShare(token: string, password?: string): Promise<PublicBatchShare> {
+  return apiRequest<PublicBatchShare>(`/shares/${token}`, {
+    headers: password ? { "x-share-password": password } : undefined
+  });
 }
 
 export function shareFilePath(token: string, mediaId: string, disposition: "view" | "download" = "view"): string {
@@ -502,8 +1018,24 @@ export function shareFilePath(token: string, mediaId: string, disposition: "view
   return `/shares/${token}/files/${mediaId}${query}`;
 }
 
+export function shareFilePdfPreviewPath(token: string, mediaId: string): string {
+  return `/shares/${token}/files/${mediaId}/preview.pdf`;
+}
+
 export function mediaViewUrl(mediaId: string): string {
   return `${API_BASE_URL}/m/${mediaId}`;
+}
+
+export function mediaPreviewPdfUrl(mediaId: string): string {
+  return `${API_BASE_URL}/m/${mediaId}/preview.pdf`;
+}
+
+export function mediaPptxSlidesUrl(mediaId: string): string {
+  return `${API_BASE_URL}/m/${mediaId}/slides`;
+}
+
+export function mediaPdfPagesUrl(mediaId: string): string {
+  return `${API_BASE_URL}/m/${mediaId}/pdf-pages`;
 }
 
 export function mediaDownloadUrl(mediaId: string): string {

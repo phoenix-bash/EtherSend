@@ -73,8 +73,8 @@ function buildEdgeLinks(nodes: MeshNode[]): EdgeLink[] {
         return { targetIndex, distance: source.base.distanceTo(target.base) };
       })
       .sort((left, right) => left.distance - right.distance)
-      .slice(0, 6)
-      .filter((entry) => entry.distance < 1.58);
+      .slice(0, 5)
+      .filter((entry) => entry.distance < 1.42);
 
     nearest.forEach(({ targetIndex }) => {
       const from = Math.min(index, targetIndex);
@@ -101,7 +101,7 @@ function AstralMesh({ theme }: { theme: ThemeMode }) {
   const lineGeometry = useMemo(() => new THREE.BufferGeometry(), []);
   const starGeometry = useMemo(() => new THREE.BufferGeometry(), []);
 
-  const nodes = useMemo(() => buildNodeField(16, 10, 1407), []);
+  const nodes = useMemo(() => buildNodeField(20, 12, 1407), []);
   const links = useMemo(() => buildEdgeLinks(nodes), [nodes]);
 
   const nodePositions = useMemo(() => new Float32Array(nodes.length * 3), [nodes.length]);
@@ -155,7 +155,7 @@ function AstralMesh({ theme }: { theme: ThemeMode }) {
     const elapsed = state.clock.elapsedTime;
     const pointerX = pointerRef.current.x;
     const pointerY = pointerRef.current.y;
-    const pointerWorld = new THREE.Vector3(pointerX * 6.9, pointerY * 4.1, -0.28);
+    const pointerWorld = new THREE.Vector3(pointerX * 6.1, pointerY * 3.6, -0.28);
 
     for (let index = 0; index < nodes.length; index += 1) {
       const node = nodes[index];
@@ -190,11 +190,11 @@ function AstralMesh({ theme }: { theme: ThemeMode }) {
       const dy = y - pointerWorld.y;
       const dz = z - pointerWorld.z;
       const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      const reactionRadius = 1.14;
+      const reactionRadius = 0.92;
 
       if (distance < reactionRadius) {
         const safeDistance = Math.max(distance, 0.001);
-        const push = (1 - safeDistance / reactionRadius) * 0.42;
+        const push = (1 - safeDistance / reactionRadius) * 0.22;
 
         x += (dx / safeDistance) * push;
         y += (dy / safeDistance) * push;
@@ -228,14 +228,14 @@ function AstralMesh({ theme }: { theme: ThemeMode }) {
     lineAttribute.needsUpdate = true;
 
     if (rootRef.current) {
-      rootRef.current.rotation.y = THREE.MathUtils.lerp(rootRef.current.rotation.y, pointerX * 0.1, 0.032);
-      rootRef.current.rotation.x = THREE.MathUtils.lerp(rootRef.current.rotation.x, -pointerY * 0.06, 0.032);
-      rootRef.current.position.x = THREE.MathUtils.lerp(rootRef.current.position.x, pointerX * 0.14, 0.026);
-      rootRef.current.position.y = THREE.MathUtils.lerp(rootRef.current.position.y, pointerY * 0.11, 0.026);
+      rootRef.current.rotation.y = THREE.MathUtils.lerp(rootRef.current.rotation.y, pointerX * 0.052, 0.026);
+      rootRef.current.rotation.x = THREE.MathUtils.lerp(rootRef.current.rotation.x, -pointerY * 0.032, 0.026);
+      rootRef.current.position.x = THREE.MathUtils.lerp(rootRef.current.position.x, pointerX * 0.075, 0.022);
+      rootRef.current.position.y = THREE.MathUtils.lerp(rootRef.current.position.y, pointerY * 0.06, 0.022);
     }
 
-    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, pointerX * 0.32, 0.025);
-    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, pointerY * 0.2, 0.025);
+    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, pointerX * 0.16, 0.022);
+    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, pointerY * 0.11, 0.022);
     state.camera.lookAt(0, 0, -0.2);
   });
 
@@ -261,26 +261,26 @@ function AstralMesh({ theme }: { theme: ThemeMode }) {
           color={colors.stars}
           size={0.03}
           transparent
-          opacity={theme === "dark" ? 0.5 : 0.5}
+          opacity={theme === "dark" ? 0.36 : 0.34}
           sizeAttenuation
           depthWrite={false}
         />
       </points>
 
       <lineSegments geometry={lineGeometry}>
-        <lineBasicMaterial color={colors.links} transparent opacity={theme === "dark" ? 0.44 : 0.4} blending={THREE.AdditiveBlending} />
+        <lineBasicMaterial color={colors.links} transparent opacity={theme === "dark" ? 0.28 : 0.25} blending={THREE.AdditiveBlending} />
       </lineSegments>
 
       <points geometry={pointGeometry}>
-        <pointsMaterial color={colors.nodes} size={0.05} transparent opacity={0.92} sizeAttenuation depthWrite={false} />
+        <pointsMaterial color={colors.nodes} size={0.043} transparent opacity={0.62} sizeAttenuation depthWrite={false} />
       </points>
 
       <points geometry={pointGeometry}>
         <pointsMaterial
           color={colors.glow}
-          size={0.11}
+          size={0.09}
           transparent
-          opacity={theme === "dark" ? 0.38 : 0.36}
+          opacity={theme === "dark" ? 0.21 : 0.19}
           sizeAttenuation
           depthWrite={false}
           blending={THREE.AdditiveBlending}

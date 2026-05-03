@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ControlShell } from "../../components/control-shell";
 import { QRCodeSVG } from "qrcode.react";
 import { copyTextToClipboard } from "../../lib/clipboard";
-import { listBatches, updateBatchShare, type BatchListItem } from "../../lib/api-client";
+import { deleteBatch, listBatches, updateBatchShare, type BatchListItem } from "../../lib/api-client";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT } from "../../lib/events";
 import { formatDateDdMmYyyy } from "../../lib/utils";
 
@@ -59,6 +59,70 @@ export default function BatchesPage() {
       setStatus("Unable to load batches for this session.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function setBatchHideFilenames(batchId: string, allowDownload: boolean, hideFilenames: boolean): Promise<void> {
+    setUpdatingBatchIds((current) => {
+      if (current.includes(batchId)) {
+        return current;
+      }
+
+      return [...current, batchId];
+    });
+
+    try {
+      const { share } = await updateBatchShare(batchId, allowDownload, hideFilenames);
+      setBatches((current) =>
+        current.map((batch) => {
+          if (batch.id !== batchId || !batch.share) {
+            return batch;
+          }
+
+          return {
+            ...batch,
+            share: {
+              ...batch.share,
+              token: share.token,
+              allowDownload: share.allowDownload,
+              hideFilenames: share.hideFilenames,
+              expiresAt: share.expiresAt,
+              publicPath: share.publicPath,
+              publicUrl: share.publicUrl
+            }
+          };
+        })
+      );
+      setStatus(hideFilenames ? "Filenames hidden on shared page." : "Filenames visible on shared page.");
+    } catch {
+      setStatus("Unable to update shared filename visibility.");
+    } finally {
+      setUpdatingBatchIds((current) => current.filter((id) => id !== batchId));
+    }
+  }
+
+  async function removeBatch(batchId: string, batchName: string): Promise<void> {
+    const confirmed = window.confirm(`Delete ${batchName}? This removes only the batch and shared link, not media files.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setUpdatingBatchIds((current) => {
+      if (current.includes(batchId)) {
+        return current;
+      }
+
+      return [...current, batchId];
+    });
+
+    try {
+      await deleteBatch(batchId);
+      setBatches((current) => current.filter((batch) => batch.id !== batchId));
+      setStatus("Batch deleted.");
+    } catch {
+      setStatus("Unable to delete batch.");
+    } finally {
+      setUpdatingBatchIds((current) => current.filter((id) => id !== batchId));
     }
   }
 
@@ -130,7 +194,7 @@ export default function BatchesPage() {
     setStatus("Failed to copy batch URL on this device.");
   }
 
-  async function setBatchDownloadAccess(batchId: string, allowDownload: boolean): Promise<void> {
+  async function setBatchDownloadAccess(batchId: string, allowDownload: boolean, hideFilenames: boolean): Promise<void> {
     setUpdatingBatchIds((current) => {
       if (current.includes(batchId)) {
         return current;
@@ -140,7 +204,7 @@ export default function BatchesPage() {
     });
 
     try {
-      const { share } = await updateBatchShare(batchId, allowDownload);
+      const { share } = await updateBatchShare(batchId, allowDownload, hideFilenames);
       setBatches((current) =>
         current.map((batch) => {
           if (batch.id !== batchId || !batch.share) {
@@ -153,6 +217,7 @@ export default function BatchesPage() {
               ...batch.share,
               token: share.token,
               allowDownload: share.allowDownload,
+              hideFilenames: share.hideFilenames,
               expiresAt: share.expiresAt,
               publicPath: share.publicPath,
               publicUrl: share.publicUrl
@@ -176,7 +241,7 @@ export default function BatchesPage() {
           <p className="mt-1 text-sm text-on-surface-variant">Only your created media batches are shown here.</p>
         </section>
 
-        <section className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-5">
+        <section>
           {status ? <p className="text-xs text-on-surface-variant">{status}</p> : null}
 
           {batchQuery ? <p className="mt-1 text-[10px] uppercase tracking-wider text-primary">Filtered by search: {searchParams.get("q")}</p> : null}
@@ -188,7 +253,7 @@ export default function BatchesPage() {
           ) : null}
 
           {!loading && sharedBatches.length > 0 ? (
-            <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(360px,420px))] justify-start gap-4">
               {sharedBatches.map((batch) => {
                 if (!batch.share) {
                   return null;
@@ -204,8 +269,8 @@ export default function BatchesPage() {
                 return (
                   <article
                     key={batch.id}
-                    className={`rounded-lg border bg-surface-container p-4 ${
-                      focusedBySuggestion ? "border-primary/35 shadow-[inset_0_0_0_1px_rgba(75,188,214,0.18)]" : "border-outline-variant/15"
+                    className={`min-h-[360px] rounded-lg border bg-surface-container p-3 ${
+                      focusedBySuggestion ? "border-primary/35 shadow-[inset_0_0_0_1px_rgba(111,77,230,0.2)]" : "border-outline-variant/15"
                     }`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -237,62 +302,106 @@ export default function BatchesPage() {
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        className="rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface transition-colors hover:text-primary"
-                        onClick={() => {
-                          void copyBatchUrl(batch.id, shareUrl);
-                        }}
-                      >
-                        {copiedBatchId === batch.id ? "(Copied)" : "Copy URL"}
-                      </button>
-
-                      <a
-                        href={shareUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary/20"
-                      >
-                        Open Batch
-                      </a>
-
-                      <div
-                        className={`inline-flex items-center gap-2 rounded-lg border border-outline-variant/45 bg-surface-container-highest/75 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] dark:border-outline-variant/35 dark:bg-surface-container-high dark:shadow-none ${
-                          isUpdating ? "opacity-70" : ""
-                        }`}
-                      >
-                        <span>Allow Download</span>
+                    <div className="mt-4 w-full space-y-2">
+                      <div className="grid w-full grid-cols-3 gap-2">
                         <button
                           type="button"
-                          role="switch"
-                          aria-checked={share.allowDownload}
-                          aria-label="Allow download for this batch"
-                          disabled={isUpdating}
-                          className={`relative inline-flex h-5 w-10 items-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/55 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-container-high disabled:cursor-not-allowed ${
-                            share.allowDownload
-                              ? "border-primary/80 bg-primary-container shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] dark:bg-primary"
-                              : "border-outline/80 bg-[rgb(188_199_212_/_0.95)] shadow-[inset_0_1px_2px_rgba(17,28,40,0.22)] dark:border-outline-variant/80 dark:bg-surface-container-low"
-                          }`}
+                          className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 text-[10px] font-bold uppercase tracking-widest text-on-surface transition-colors hover:text-primary"
                           onClick={() => {
-                            void setBatchDownloadAccess(batch.id, !share.allowDownload);
+                            void copyBatchUrl(batch.id, shareUrl);
                           }}
                         >
-                          <span
-                            className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-[rgb(95_109_126_/_0.75)] bg-white shadow-[0_1px_2px_rgba(16,26,38,0.3)] transition-transform dark:border-slate-200/40 dark:bg-slate-100 ${
-                              share.allowDownload ? "translate-x-5" : "translate-x-0"
-                            }`}
-                          />
+                          {copiedBatchId === batch.id ? "(Copied)" : "Copy URL"}
+                        </button>
+
+                        <a
+                          href={shareUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-primary/30 bg-primary/10 px-3 text-[10px] font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary/20"
+                        >
+                          Open Batch
+                        </a>
+
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-error/25 bg-error/10 px-3 text-[10px] font-bold uppercase tracking-widest text-error transition-colors hover:bg-error/15 disabled:cursor-not-allowed disabled:opacity-70"
+                          onClick={() => {
+                            void removeBatch(batch.id, formatBatchName(batch));
+                          }}
+                        >
+                          Delete Batch
                         </button>
                       </div>
+
+                      <div className="grid w-full grid-cols-2 gap-2">
+                        <div
+                          className={`inline-flex w-full items-center justify-between gap-2 rounded-lg border border-outline-variant/45 bg-surface-container-highest/75 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] dark:border-outline-variant/35 dark:bg-surface-container-high dark:shadow-none ${
+                            isUpdating ? "opacity-70" : ""
+                          }`}
+                        >
+                          <span>Allow Download</span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={share.allowDownload}
+                            aria-label="Allow download for this batch"
+                            disabled={isUpdating}
+                            className={`relative inline-flex h-5 w-10 items-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/55 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-container-high disabled:cursor-not-allowed ${
+                              share.allowDownload
+                                ? "border-primary/80 bg-primary-container shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] dark:bg-primary"
+                                : "border-outline/80 bg-[rgb(188_199_212_/_0.95)] shadow-[inset_0_1px_2px_rgba(17,28,40,0.22)] dark:border-outline-variant/80 dark:bg-surface-container-low"
+                            }`}
+                            onClick={() => {
+                              void setBatchDownloadAccess(batch.id, !share.allowDownload, share.hideFilenames);
+                            }}
+                          >
+                            <span
+                              className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-[rgb(95_109_126_/_0.75)] bg-white shadow-[0_1px_2px_rgba(16,26,38,0.3)] transition-transform dark:border-slate-200/40 dark:bg-slate-100 ${
+                                share.allowDownload ? "translate-x-5" : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        <div
+                          className={`inline-flex w-full items-center justify-between gap-2 rounded-lg border border-outline-variant/45 bg-surface-container-highest/75 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] dark:border-outline-variant/35 dark:bg-surface-container-high dark:shadow-none ${
+                            isUpdating ? "opacity-70" : ""
+                          }`}
+                        >
+                          <span>Hide Filenames</span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={share.hideFilenames}
+                            aria-label="Hide filenames on shared page for this batch"
+                            disabled={isUpdating}
+                            className={`relative inline-flex h-5 w-10 items-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/55 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-container-high disabled:cursor-not-allowed ${
+                              share.hideFilenames
+                                ? "border-primary/80 bg-primary-container shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] dark:bg-primary"
+                                : "border-outline/80 bg-[rgb(188_199_212_/_0.95)] shadow-[inset_0_1px_2px_rgba(17,28,40,0.22)] dark:border-outline-variant/80 dark:bg-surface-container-low"
+                            }`}
+                            onClick={() => {
+                              void setBatchHideFilenames(batch.id, share.allowDownload, !share.hideFilenames);
+                            }}
+                          >
+                            <span
+                              className={`absolute left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-[rgb(95_109_126_/_0.75)] bg-white shadow-[0_1px_2px_rgba(16,26,38,0.3)] transition-transform dark:border-slate-200/40 dark:bg-slate-100 ${
+                                share.hideFilenames ? "translate-x-5" : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : null}
-        </section>
-      </div>
-    </ControlShell>
-  );
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
+      </section>
+    </div>
+  </ControlShell>
+);
 }

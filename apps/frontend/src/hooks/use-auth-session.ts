@@ -19,7 +19,11 @@ export function useAuthSession() {
     setUser(null);
     setLoading(false);
     window.dispatchEvent(new Event(SIGNED_OUT_EVENT));
-    await logoutSession();
+    try {
+      await logoutSession();
+    } finally {
+      window.location.replace("/");
+    }
   }, []);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { AuthProvider, type LoginSession, type User } from "@prisma/client";
+import { AuthProvider, Prisma, type LoginSession, type User } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 
 interface UpsertIdentityInput {
@@ -39,6 +39,22 @@ export interface CreateLoginSessionInput {
 }
 
 export class AuthRepository {
+  async findUserByIdentity(provider: AuthProvider, providerSubjectId: string): Promise<User | null> {
+    const identity = await prisma.userIdentity.findUnique({
+      where: {
+        provider_providerSubjectId: {
+          provider,
+          providerSubjectId
+        }
+      },
+      include: {
+        user: true
+      }
+    });
+
+    return identity?.user ?? null;
+  }
+
   async upsertUserAndIdentity(input: UpsertIdentityInput): Promise<User> {
     const existingByIdentity = await prisma.userIdentity.findUnique({
       where: {
@@ -256,6 +272,34 @@ export class AuthRepository {
     });
   }
 
+  async storeAccountDeletionCode(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+    const data: Record<string, unknown> = {
+      accountDeletionCodeHash: tokenHash,
+      accountDeletionCodeExpiresAt: expiresAt
+    };
+
+    await prisma.user.update({
+      where: {
+        id: userId
+      },
+      data: data as Prisma.UserUncheckedUpdateInput
+    });
+  }
+
+  async clearAccountDeletionCode(userId: string): Promise<void> {
+    const data: Record<string, unknown> = {
+      accountDeletionCodeHash: null,
+      accountDeletionCodeExpiresAt: null
+    };
+
+    await prisma.user.update({
+      where: {
+        id: userId
+      },
+      data: data as Prisma.UserUncheckedUpdateInput
+    });
+  }
+
   async createLoginSession(input: CreateLoginSessionInput): Promise<LoginSession> {
     return prisma.loginSession.create({
       data: {
@@ -312,15 +356,22 @@ export class AuthRepository {
     });
   }
 
-  async touchSession(sessionId: string): Promise<void> {
+  async touchSession(input: { sessionId: string; expiresAt: Date; refreshTokenHash?: string }): Promise<void> {
+    const data: { lastActivityAt: Date; expiresAt: Date; refreshTokenHash?: string } = {
+      lastActivityAt: new Date(),
+      expiresAt: input.expiresAt
+    };
+
+    if (input.refreshTokenHash) {
+      data.refreshTokenHash = input.refreshTokenHash;
+    }
+
     await prisma.loginSession.updateMany({
       where: {
-        id: sessionId,
+        id: input.sessionId,
         revokedAt: null
       },
-      data: {
-        lastActivityAt: new Date()
-      }
+      data
     });
   }
 

@@ -134,7 +134,7 @@ export function SystemFeed() {
   }
 
   return (
-    <section className="flex flex-col rounded-xl border border-outline-variant/15 bg-surface-container-low p-6">
+    <section className="dashboard-section-band flex flex-col border border-outline-variant/15 bg-surface-container-low p-6">
       <div className="mb-6 flex items-center justify-between gap-2">
         <h3 className="font-headline text-sm font-bold uppercase tracking-widest text-on-surface">System Logs</h3>
         <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ export function SystemFeed() {
 
       <ul className="custom-scrollbar max-h-[300px] flex-1 space-y-6 overflow-y-auto pr-2">
         {logs.length === 0 ? (
-          <li className="rounded-lg border border-outline-variant/10 bg-surface-container px-3 py-4 text-[11px] text-on-surface-variant">
+          <li className="border border-outline-variant/10 bg-surface-container px-3 py-4 text-[11px] text-on-surface-variant">
             No activity yet. Upload an asset or share a batch to start the timeline.
           </li>
         ) : (
@@ -179,7 +179,7 @@ export function SystemFeed() {
         )}
       </ul>
 
-      <div className="mt-4 rounded-lg border border-outline-variant/10 bg-surface-container px-3 py-2 text-[10px] font-label uppercase tracking-widest text-on-surface-variant">
+      <div className="mt-4 border border-outline-variant/10 bg-surface-container px-3 py-2 text-[10px] font-label uppercase tracking-widest text-on-surface-variant">
         {logs.length === 0 ? "No activity in this session" : user ? "Live activity feed" : "Guest activity feed"}
       </div>
     </section>

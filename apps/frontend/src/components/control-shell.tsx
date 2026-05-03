@@ -476,7 +476,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
   }
 
   return (
-    <div className="glass-site min-h-screen bg-background text-on-background">
+    <div className="glass-site dashboard-bg-base min-h-screen bg-background text-on-background">
       {guestBannerVisible ? (
         <div className="fixed left-0 right-0 top-0 z-50 flex h-10 items-center justify-center gap-3 border-b border-secondary/20 bg-secondary-container/30 px-4">
           <span className="material-symbols-outlined text-sm text-secondary">info</span>
@@ -612,7 +612,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
                   desktopNavCollapsed ? "justify-center px-0" : "gap-3 px-3"
                 } ${
                   active
-                    ? "rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-[inset_0_0_0_1px_rgba(75,188,214,0.12)]"
+                    ? "rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-[inset_0_0_0_1px_rgba(111,77,230,0.16)]"
                     : "rounded-lg text-on-surface-variant hover:bg-surface-container-high/40 hover:text-on-surface"
                 }`}
                 title={desktopNavCollapsed ? item.label : undefined}
@@ -904,7 +904,7 @@ export function ControlShell({ children, searchPlaceholder = "SEARCH ASSETS OR B
       </header>
 
       <main className={`min-h-screen px-3 pb-8 md:px-6 ${desktopNavCollapsed ? "md:ml-[4.5rem]" : "md:ml-64"} ${guestBannerVisible ? "pt-[6.5rem]" : "pt-[4.5rem]"}`}>
-        <div className="mx-auto w-full max-w-[1240px]">{children}</div>
+        <div className="w-full">{children}</div>
       </main>
     </div>
   );

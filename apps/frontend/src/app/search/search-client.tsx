@@ -153,7 +153,7 @@ export default function SearchPage() {
 
   return (
     <ControlShell searchPlaceholder="Search filenames, batches, or pages...">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
+      <div className="flex w-full flex-col gap-4">
         <section className="border-b border-outline-variant/20 pb-3">
           <h2 className="font-headline text-2xl font-extrabold tracking-tight text-on-surface">Search</h2>
           <p className="mt-1 text-xs uppercase tracking-wider text-on-surface-variant">{status}</p>

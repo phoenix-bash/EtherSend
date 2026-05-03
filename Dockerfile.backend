@@ -3,6 +3,10 @@ FROM node:24-bookworm-slim AS builder
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress \
+  && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable
 
 WORKDIR /app
@@ -24,6 +28,10 @@ FROM node:24-bookworm-slim AS runner
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV NODE_ENV=production
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress \
+  && rm -rf /var/lib/apt/lists/*
 
 RUN corepack enable
 

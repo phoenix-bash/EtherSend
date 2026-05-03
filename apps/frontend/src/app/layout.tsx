@@ -1,17 +1,23 @@
 import type { Metadata } from "next";
-import { Doto, JetBrains_Mono, Red_Hat_Display, Saira_Stencil_One } from "next/font/google";
+import { Bebas_Neue, JetBrains_Mono, Syne } from "next/font/google";
 import "@fontsource/material-symbols-outlined";
 import "./globals.css";
 import { PageTransition } from "../components/page-transition";
 
-const sairaStencil = Saira_Stencil_One({ subsets: ["latin"], weight: "400", variable: "--font-main" });
-const redHatDisplay = Red_Hat_Display({ subsets: ["latin"], variable: "--font-subtitle" });
-const doto = Doto({ subsets: ["latin"], variable: "--font-typewriter" });
+const syne = Syne({ subsets: ["latin"], variable: "--font-main" });
+const bebasNeue = Bebas_Neue({ subsets: ["latin"], weight: "400", variable: "--font-display" });
+const jetbrainsSubtitle = JetBrains_Mono({ subsets: ["latin"], variable: "--font-subtitle" });
+const jetbrainsTypewriter = JetBrains_Mono({ subsets: ["latin"], variable: "--font-typewriter" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   title: "EtherSend",
-  description: "Persistent media and link control platform"
+  description: "Persistent media and link control platform",
+  icons: {
+    icon: "/Media_Assets/EtherSend.png",
+    shortcut: "/Media_Assets/EtherSend.png",
+    apple: "/Media_Assets/EtherSend.png"
+  }
 };
 
 const themeBootstrapScript = `(() => {
@@ -126,7 +132,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: hydrationSanitizerScript }} />
         <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
-      <body suppressHydrationWarning className={`${sairaStencil.variable} ${redHatDisplay.variable} ${doto.variable} ${jetbrainsMono.variable}`}>
+      <body
+        suppressHydrationWarning
+        className={`${syne.variable} ${bebasNeue.variable} ${jetbrainsSubtitle.variable} ${jetbrainsTypewriter.variable} ${jetbrainsMono.variable}`}
+      >
         <PageTransition>{children}</PageTransition>
       </body>
     </html>

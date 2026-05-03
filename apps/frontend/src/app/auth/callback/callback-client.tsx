@@ -59,7 +59,7 @@ export function AuthCallbackClient() {
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-primary/5 blur-[120px]"></div>
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-secondary/5 blur-[120px]"></div>
 
-      <section className="glass-card relative z-10 w-full max-w-[440px] rounded-lg border border-outline-variant/20 p-10 shadow-[0px_0px_36px_rgba(75,188,214,0.06)]">
+      <section className="glass-card relative z-10 w-full max-w-[440px] rounded-lg border border-outline-variant/20 p-10 shadow-[0px_0px_36px_rgba(111,77,230,0.1)]">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Authentication Gateway</p>
         <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-on-surface">Finalizing Sign-In</h1>
         <p className="mt-3 text-sm text-on-surface-variant">{message}</p>

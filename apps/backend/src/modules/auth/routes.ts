@@ -61,7 +61,13 @@ const sessionRevokeParamSchema = z.object({
 });
 
 const deleteAccountSchema = z.object({
-  confirmation: z.string().trim().regex(/^[A-Za-z]{1,15}$/)
+  confirmation: z.string().trim().regex(/^[A-Za-z]{1,15}$/),
+  verificationCode: z.string().trim().regex(/^\d{6}$/)
+});
+
+const deleteAccountVerificationRequestSchema = z.object({
+  confirmation: z.string().trim().regex(/^[A-Za-z]{1,15}$/),
+  timeZone: z.string().trim().min(1).max(100).optional()
 });
 
 function issueTokens(
@@ -90,21 +96,28 @@ function issueTokens(
 }
 
 function setSessionCookies(reply: FastifyReply, tokens: { accessToken: string; refreshToken: string }): void {
+  const isProduction = env.NODE_ENV === "production";
+
   reply
     .setCookie("lf_access_token", tokens.accessToken, {
       path: "/",
       httpOnly: true,
-      sameSite: "lax",
-      secure: env.NODE_ENV === "production",
+      sameSite: isProduction ? "none" : "lax",
+      secure: isProduction,
       maxAge: 60 * 15
     })
     .setCookie("lf_refresh_token", tokens.refreshToken, {
       path: "/",
       httpOnly: true,
-      sameSite: "lax",
-      secure: env.NODE_ENV === "production",
+      sameSite: isProduction ? "none" : "lax",
+      secure: isProduction,
       maxAge: 60 * 60 * 24 * 7
     });
+}
+
+function setNoStoreHeaders(reply: FastifyReply): void {
+  reply.header("Cache-Control", "no-store, max-age=0");
+  reply.header("Pragma", "no-cache");
 }
 
 interface AuthStatePayload {
@@ -270,10 +283,29 @@ function parseClientMetadata(request: FastifyRequest): LoginSessionMetadata {
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   const service = new AuthService(new AuthRepository(), getEmailProvider());
 
-  app.get("/auth/providers", async () => ({
-    enabled: ["google", "github"],
-    localPasswordAuth: true
-  }));
+  app.addHook("onSend", async (request, reply) => {
+    if (!request.url.startsWith("/auth")) {
+      return;
+    }
+
+    setNoStoreHeaders(reply);
+  });
+
+  app.get(
+    "/auth/providers",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async () => ({
+      enabled: ["google", "github"],
+      localPasswordAuth: true
+    })
+  );
 
   app.post(
     "/auth/signup",
@@ -405,55 +437,109 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     }
   );
 
-  app.get("/auth/:provider/start", async (request, reply) => {
-    const providerResult = providerSchema.safeParse((request.params as { provider: string }).provider);
+  app.get(
+    "/auth/:provider/start",
+    {
+      config: {
+        rateLimit: {
+          max: 40,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const providerResult = providerSchema.safeParse((request.params as { provider: string }).provider);
 
-    if (!providerResult.success) {
-      return reply.status(400).send({ error: "Invalid provider" });
+      if (!providerResult.success) {
+        return reply.status(400).send({ error: "Invalid provider" });
+      }
+
+      const queryResult = startQuerySchema.safeParse(request.query);
+      if (!queryResult.success) {
+        return reply.status(400).send({ error: "Invalid query", details: queryResult.error.flatten() });
+      }
+
+      const mode = env.NODE_ENV === "production" ? "cookie" : queryResult.data.mode === "token" ? "token" : "cookie";
+      const redirectPath =
+        queryResult.data.redirectPath && queryResult.data.redirectPath.startsWith("/")
+          ? queryResult.data.redirectPath
+          : "/auth/callback";
+
+      const state = encodeState({
+        mode,
+        redirectPath,
+        appState: queryResult.data.state
+      });
+
+      const authorizationUrl = service.getAuthorizationUrl(providerResult.data, state);
+      return reply.redirect(authorizationUrl);
     }
+  );
 
-    const queryResult = startQuerySchema.safeParse(request.query);
-    if (!queryResult.success) {
-      return reply.status(400).send({ error: "Invalid query", details: queryResult.error.flatten() });
-    }
+  app.get(
+    "/auth/:provider/callback",
+    {
+      config: {
+        rateLimit: {
+          max: 20,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const providerResult = providerSchema.safeParse((request.params as { provider: string }).provider);
+      if (!providerResult.success) {
+        return reply.status(400).send({ error: "Invalid provider" });
+      }
 
-    const mode = queryResult.data.mode === "token" ? "token" : "cookie";
-    const redirectPath =
-      queryResult.data.redirectPath && queryResult.data.redirectPath.startsWith("/")
-        ? queryResult.data.redirectPath
-        : "/auth/callback";
+      const queryResult = callbackQuerySchema.safeParse(request.query);
+      if (!queryResult.success) {
+        return reply.status(400).send({ error: "Invalid callback query", details: queryResult.error.flatten() });
+      }
 
-    const state = encodeState({
-      mode,
-      redirectPath,
-      appState: queryResult.data.state
-    });
+      const statePayload = decodeState(queryResult.data.state);
+      let user: { id: string; role: "ADMIN" | "USER"; email: string };
 
-    const authorizationUrl = service.getAuthorizationUrl(providerResult.data, state);
-    return reply.redirect(authorizationUrl);
-  });
+      try {
+        user = await service.authenticateWithCode(providerResult.data, queryResult.data.code);
+        await service.enforceSessionPolicyForLogin(user.id);
+      } catch (error) {
+        if (error instanceof HttpError && (error.details as { code?: unknown } | undefined)?.code === "PASSWORD_RESET_REQUIRED") {
+          const redirectUrl = new URL(`${env.FRONTEND_BASE_URL}${statePayload.redirectPath}`);
+          redirectUrl.searchParams.set("errorCode", "PASSWORD_RESET_REQUIRED");
+          if (statePayload.appState) {
+            redirectUrl.searchParams.set("state", statePayload.appState);
+          }
 
-  app.get("/auth/:provider/callback", async (request, reply) => {
-    const providerResult = providerSchema.safeParse((request.params as { provider: string }).provider);
-    if (!providerResult.success) {
-      return reply.status(400).send({ error: "Invalid provider" });
-    }
+          return reply.redirect(redirectUrl.toString());
+        }
 
-    const queryResult = callbackQuerySchema.safeParse(request.query);
-    if (!queryResult.success) {
-      return reply.status(400).send({ error: "Invalid callback query", details: queryResult.error.flatten() });
-    }
+        throw error;
+      }
 
-    const statePayload = decodeState(queryResult.data.state);
-    let user: { id: string; role: "ADMIN" | "USER"; email: string };
+      const sessionId = randomUUID();
+      const tokens = issueTokens(
+        app,
+        {
+          id: user.id,
+          role: user.role,
+          email: user.email
+        },
+        sessionId
+      );
 
-    try {
-      user = await service.authenticateWithCode(providerResult.data, queryResult.data.code);
-      await service.enforceSessionPolicyForLogin(user.id);
-    } catch (error) {
-      if (error instanceof HttpError && (error.details as { code?: unknown } | undefined)?.code === "PASSWORD_RESET_REQUIRED") {
+      await service.createLoginSession({
+        sessionId,
+        userId: user.id,
+        refreshToken: tokens.refreshToken,
+        metadata: parseClientMetadata(request)
+      });
+
+      if (statePayload.mode === "token" && env.NODE_ENV !== "production") {
         const redirectUrl = new URL(`${env.FRONTEND_BASE_URL}${statePayload.redirectPath}`);
-        redirectUrl.searchParams.set("errorCode", "PASSWORD_RESET_REQUIRED");
+        redirectUrl.searchParams.set("accessToken", tokens.accessToken);
+        redirectUrl.searchParams.set("refreshToken", tokens.refreshToken);
+        redirectUrl.searchParams.set("provider", providerResult.data);
         if (statePayload.appState) {
           redirectUrl.searchParams.set("state", statePayload.appState);
         }
@@ -461,226 +547,314 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         return reply.redirect(redirectUrl.toString());
       }
 
-      throw error;
+      setSessionCookies(reply, tokens);
+
+      return reply.redirect(`${env.FRONTEND_BASE_URL}${statePayload.redirectPath}`);
     }
+  );
 
-    const sessionId = randomUUID();
-    const tokens = issueTokens(
-      app,
-      {
-        id: user.id,
-        role: user.role,
-        email: user.email
-      },
-      sessionId
-    );
+  app.post(
+    "/auth/oauth/:provider",
+    {
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const providerResult = providerSchema.safeParse((request.params as { provider: string }).provider);
 
-    await service.createLoginSession({
-      sessionId,
-      userId: user.id,
-      refreshToken: tokens.refreshToken,
-      metadata: parseClientMetadata(request)
-    });
-
-    if (statePayload.mode === "token") {
-      const redirectUrl = new URL(`${env.FRONTEND_BASE_URL}${statePayload.redirectPath}`);
-      redirectUrl.searchParams.set("accessToken", tokens.accessToken);
-      redirectUrl.searchParams.set("refreshToken", tokens.refreshToken);
-      redirectUrl.searchParams.set("provider", providerResult.data);
-      if (statePayload.appState) {
-        redirectUrl.searchParams.set("state", statePayload.appState);
+      if (!providerResult.success) {
+        return reply.status(400).send({ error: "Invalid provider" });
       }
 
-      return reply.redirect(redirectUrl.toString());
+      const bodyResult = exchangeBodySchema.safeParse(request.body);
+      if (!bodyResult.success) {
+        return reply.status(400).send({ error: "Invalid body", details: bodyResult.error.flatten() });
+      }
+
+      const user = bodyResult.data.accessToken
+        ? await service.authenticateWithAccessToken(providerResult.data, bodyResult.data.accessToken)
+        : await service.authenticateWithCode(providerResult.data, bodyResult.data.code as string);
+
+      await service.enforceSessionPolicyForLogin(user.id);
+
+      const sessionId = randomUUID();
+      const tokens = issueTokens(
+        app,
+        {
+          id: user.id,
+          role: user.role,
+          email: user.email
+        },
+        sessionId
+      );
+
+      await service.createLoginSession({
+        sessionId,
+        userId: user.id,
+        refreshToken: tokens.refreshToken,
+        metadata: parseClientMetadata(request)
+      });
+
+      return reply.send({
+        user,
+        ...tokens
+      });
     }
+  );
 
-    setSessionCookies(reply, tokens);
+  app.post(
+    "/auth/refresh",
+    {
+      config: {
+        rateLimit: {
+          max: 20,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const refreshToken =
+        (request.body as { refreshToken?: string } | undefined)?.refreshToken ?? request.cookies.lf_refresh_token;
 
-    return reply.redirect(`${env.FRONTEND_BASE_URL}${statePayload.redirectPath}`);
-  });
+      if (!refreshToken) {
+        return reply.status(400).send({ error: "Refresh token is required" });
+      }
 
-  app.post("/auth/oauth/:provider", async (request, reply) => {
-    const providerResult = providerSchema.safeParse((request.params as { provider: string }).provider);
-
-    if (!providerResult.success) {
-      return reply.status(400).send({ error: "Invalid provider" });
-    }
-
-    const bodyResult = exchangeBodySchema.safeParse(request.body);
-    if (!bodyResult.success) {
-      return reply.status(400).send({ error: "Invalid body", details: bodyResult.error.flatten() });
-    }
-
-    const user = bodyResult.data.accessToken
-      ? await service.authenticateWithAccessToken(providerResult.data, bodyResult.data.accessToken)
-      : await service.authenticateWithCode(providerResult.data, bodyResult.data.code as string);
-
-    await service.enforceSessionPolicyForLogin(user.id);
-
-    const sessionId = randomUUID();
-    const tokens = issueTokens(
-      app,
-      {
-        id: user.id,
-        role: user.role,
-        email: user.email
-      },
-      sessionId
-    );
-
-    await service.createLoginSession({
-      sessionId,
-      userId: user.id,
-      refreshToken: tokens.refreshToken,
-      metadata: parseClientMetadata(request)
-    });
-
-    return reply.send({
-      user,
-      ...tokens
-    });
-  });
-
-  app.post("/auth/refresh", async (request, reply) => {
-    const refreshToken =
-      (request.body as { refreshToken?: string } | undefined)?.refreshToken ?? request.cookies.lf_refresh_token;
-
-    if (!refreshToken) {
-      return reply.status(400).send({ error: "Refresh token is required" });
-    }
-
-    let payload: { sub: string; role: "ADMIN" | "USER"; email: string; sid: string };
-    try {
-      payload = app.jwt.verify(refreshToken) as { sub: string; role: "ADMIN" | "USER"; email: string; sid: string };
-    } catch {
-      return reply.status(401).send({ error: "Invalid refresh token" });
-    }
-
-    if (!payload.sid) {
-      return reply.status(401).send({ error: "Invalid refresh token" });
-    }
-
-    const validSession = await service.validateRefreshSession(payload.sub, payload.sid, refreshToken);
-    if (!validSession) {
-      return reply.status(401).send({ error: "Invalid refresh session" });
-    }
-
-    await service.touchSession(payload.sid);
-
-    const accessToken = app.jwt.sign({
-      sub: payload.sub,
-      role: payload.role,
-      email: payload.email,
-      sid: payload.sid
-    });
-
-    return reply.send({ accessToken });
-  });
-
-  app.post("/auth/logout", async (request, reply) => {
-    const bearerToken = extractBearerToken(request.headers.authorization);
-    const accessToken = bearerToken ?? request.cookies.lf_access_token;
-    const refreshToken =
-      (request.body as { refreshToken?: string } | undefined)?.refreshToken ?? request.cookies.lf_refresh_token;
-
-    let payload: { sub: string; sid: string } | null = null;
-
-    if (accessToken) {
+      let payload: { sub: string; role: "ADMIN" | "USER"; email: string; sid: string };
       try {
-        payload = app.jwt.verify(accessToken) as { sub: string; sid: string };
+        payload = app.jwt.verify(refreshToken) as { sub: string; role: "ADMIN" | "USER"; email: string; sid: string };
       } catch {
-        payload = null;
+        return reply.status(401).send({ error: "Invalid refresh token" });
       }
-    }
 
-    if (!payload && refreshToken) {
-      try {
-        payload = app.jwt.verify(refreshToken) as { sub: string; sid: string };
-      } catch {
-        payload = null;
+      if (!payload.sid) {
+        return reply.status(401).send({ error: "Invalid refresh token" });
       }
+
+      const validSession = await service.validateRefreshSession(payload.sub, payload.sid, refreshToken);
+      if (!validSession) {
+        return reply.status(401).send({ error: "Invalid refresh token" });
+      }
+
+      const tokens = issueTokens(
+        app,
+        {
+          id: payload.sub,
+          role: payload.role,
+          email: payload.email
+        },
+        payload.sid
+      );
+
+      await service.rotateRefreshSession(payload.sid, tokens.refreshToken);
+      setSessionCookies(reply, tokens);
+
+      return reply.send({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
     }
+  );
 
-    if (payload?.sid) {
-      await service.revokeSessionByToken(payload.sub, payload.sid, "logout");
-    }
+  app.post(
+    "/auth/logout",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const bearerToken = extractBearerToken(request.headers.authorization);
+      const accessToken = bearerToken ?? request.cookies.lf_access_token;
+      const refreshToken =
+        (request.body as { refreshToken?: string } | undefined)?.refreshToken ?? request.cookies.lf_refresh_token;
 
-    reply
-      .clearCookie("lf_access_token", { path: "/" })
-      .clearCookie("lf_refresh_token", { path: "/" });
+      let payload: { sub: string; sid: string } | null = null;
 
-    return reply.send({ ok: true });
-  });
+      if (accessToken) {
+        try {
+          payload = app.jwt.verify(accessToken) as { sub: string; sid: string };
+        } catch {
+          payload = null;
+        }
+      }
 
-  app.get("/auth/sessions", { preHandler: [requireAuth] }, async (request) => {
-    const sessions = await service.listActiveSessions(request.user.sub, request.user.sid);
-    return { items: sessions };
-  });
+      if (!payload && refreshToken) {
+        try {
+          payload = app.jwt.verify(refreshToken) as { sub: string; sid: string };
+        } catch {
+          payload = null;
+        }
+      }
 
-  app.delete("/auth/sessions/:sessionId", { preHandler: [requireAuth] }, async (request, reply) => {
-    const paramsResult = sessionRevokeParamSchema.safeParse(request.params);
-    if (!paramsResult.success) {
-      return reply.status(400).send({ error: "Invalid session id" });
-    }
+      if (payload?.sid) {
+        await service.revokeSessionByToken(payload.sub, payload.sid, "logout");
+      }
 
-    await service.revokeSession(request.user.sub, paramsResult.data.sessionId);
-    const currentSessionRevoked = request.user.sid === paramsResult.data.sessionId;
-
-    if (currentSessionRevoked) {
       reply
         .clearCookie("lf_access_token", { path: "/" })
         .clearCookie("lf_refresh_token", { path: "/" });
+
+      return reply.send({ ok: true });
     }
+  );
 
-    return reply.send({
-      ok: true,
-      currentSessionRevoked
-    });
-  });
-
-  app.get("/auth/me", { preHandler: [requireAuth] }, async (request) => {
-    const user = await prisma.user.findUnique({ where: { id: request.user.sub } });
-    return { user };
-  });
-
-  app.get("/auth/account", { preHandler: [requireAuth] }, async (request) => {
-    const user = await prisma.user.findUnique({ where: { id: request.user.sub } });
-
-    if (!user) {
-      return { account: null };
-    }
-
-    const validityEndsAt =
-      user.accountType === "SUBSCRIPTION"
-        ? user.planValidUntil
-        : new Date(Date.now() + 1000 * 60 * 60 * 24 * 30 * 3);
-
-    return {
-      account: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        accountType: user.accountType,
-        planName: user.planName,
-        planValidUntil: user.planValidUntil,
-        defaultMediaValidityEndsAt: validityEndsAt
+  app.get(
+    "/auth/sessions",
+    {
+      preHandler: [requireAuth],
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute"
+        }
       }
-    };
-  });
-
-  app.delete("/auth/account", { preHandler: [requireAuth] }, async (request, reply) => {
-    const bodyResult = deleteAccountSchema.safeParse(request.body);
-    if (!bodyResult.success) {
-      return reply.status(400).send({ error: "Invalid deletion confirmation" });
+    },
+    async (request) => {
+      const sessions = await service.listActiveSessions(request.user.sub, request.user.sid);
+      return { items: sessions };
     }
+  );
 
-    await service.permanentlyDeleteAccount(request.user.sub);
+  app.delete(
+    "/auth/sessions/:sessionId",
+    {
+      preHandler: [requireAuth],
+      config: {
+        rateLimit: {
+          max: 20,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const paramsResult = sessionRevokeParamSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({ error: "Invalid session id" });
+      }
 
-    reply
-      .clearCookie("lf_access_token", { path: "/" })
-      .clearCookie("lf_refresh_token", { path: "/" });
+      await service.revokeSession(request.user.sub, paramsResult.data.sessionId);
+      const currentSessionRevoked = request.user.sid === paramsResult.data.sessionId;
 
-    return reply.send({ ok: true });
-  });
+      if (currentSessionRevoked) {
+        reply
+          .clearCookie("lf_access_token", { path: "/" })
+          .clearCookie("lf_refresh_token", { path: "/" });
+      }
+
+      return reply.send({
+        ok: true,
+        currentSessionRevoked
+      });
+    }
+  );
+
+  app.get(
+    "/auth/me",
+    {
+      preHandler: [requireAuth],
+      config: {
+        rateLimit: {
+          max: 60,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request) => {
+      const user = await prisma.user.findUnique({ where: { id: request.user.sub } });
+      return { user };
+    }
+  );
+
+  app.get(
+    "/auth/account",
+    {
+      preHandler: [requireAuth],
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request) => {
+      const user = await prisma.user.findUnique({ where: { id: request.user.sub } });
+
+      if (!user) {
+        return { account: null };
+      }
+
+      const validityEndsAt =
+        user.accountType === "SUBSCRIPTION"
+          ? user.planValidUntil
+          : new Date(Date.now() + 1000 * 60 * 60 * 24 * 30 * 3);
+
+      return {
+        account: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          accountType: user.accountType,
+          planName: user.planName,
+          planValidUntil: user.planValidUntil,
+          defaultMediaValidityEndsAt: validityEndsAt
+        }
+      };
+    }
+  );
+
+  app.delete(
+    "/auth/account",
+    {
+      preHandler: [requireAuth],
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const bodyResult = deleteAccountSchema.safeParse(request.body);
+      if (!bodyResult.success) {
+        return reply.status(400).send({ error: "Invalid deletion confirmation" });
+      }
+
+      await service.permanentlyDeleteAccount(request.user.sub, bodyResult.data.verificationCode);
+
+      reply
+        .clearCookie("lf_access_token", { path: "/" })
+        .clearCookie("lf_refresh_token", { path: "/" });
+
+      return reply.send({ ok: true });
+    }
+  );
+
+  app.post(
+    "/auth/account/delete-verification",
+    {
+      preHandler: [requireAuth],
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const bodyResult = deleteAccountVerificationRequestSchema.safeParse(request.body);
+      if (!bodyResult.success) {
+        return reply.status(400).send({ error: "Invalid deletion confirmation" });
+      }
+
+      await service.requestAccountDeletionVerification(request.user.sub, bodyResult.data.timeZone);
+
+      return reply.send({ ok: true });
+    }
+  );
 }

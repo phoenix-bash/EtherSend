@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ControlShell } from "../../components/control-shell";
+import { FileViewer } from "../../components/file-viewer";
 import {
   absoluteApiUrl,
   createImageLink,
@@ -10,6 +11,8 @@ import {
   getAccessToken,
   listMedia,
   mediaDownloadUrl,
+  mediaPdfPagesUrl,
+  mediaPptxSlidesUrl,
   mediaViewUrl,
   replaceMedia,
   toggleMedia,
@@ -21,6 +24,149 @@ import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
 
 type MediaFilter = "all" | "image" | "video" | "json" | "other";
 type ViewMode = "grid" | "list";
+
+const TEXT_FILE_EXTENSIONS = new Set([
+  "txt",
+  "md",
+  "csv",
+  "tsv",
+  "log",
+  "ini",
+  "cfg",
+  "conf",
+  "env",
+  "json",
+  "jsonc",
+  "yaml",
+  "yml",
+  "xml",
+  "toml",
+  "c",
+  "h",
+  "cpp",
+  "hpp",
+  "cc",
+  "cxx",
+  "java",
+  "kt",
+  "kts",
+  "py",
+  "rb",
+  "php",
+  "go",
+  "rs",
+  "swift",
+  "sh",
+  "bash",
+  "zsh",
+  "ps1",
+  "sql",
+  "js",
+  "mjs",
+  "cjs",
+  "ts",
+  "tsx",
+  "jsx",
+  "css",
+  "scss",
+  "less",
+  "html",
+  "htm",
+  "vue",
+  "svelte",
+  "dart",
+  "r",
+  "pl",
+  "lua",
+  "dockerfile",
+  "makefile"
+]);
+
+function isTextPreviewMime(mimeType: string): boolean {
+  if (mimeType.startsWith("text/")) {
+    return true;
+  }
+
+  const normalized = mimeType.toLowerCase();
+  if (
+    normalized === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    normalized === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    normalized === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+    normalized === "application/vnd.ms-excel" ||
+    normalized === "application/vnd.ms-powerpoint" ||
+    normalized === "application/msword"
+  ) {
+    return false;
+  }
+
+  return (
+    normalized.includes("json") ||
+    normalized === "application/xml" ||
+    normalized === "text/xml" ||
+    normalized.includes("yaml") ||
+    normalized.includes("x-yaml") ||
+    normalized.includes("toml") ||
+    normalized.includes("x-sh") ||
+    normalized.includes("x-shellscript") ||
+    normalized.includes("x-python") ||
+    normalized.includes("x-java") ||
+    normalized.includes("x-c") ||
+    normalized.includes("x-c++") ||
+    normalized.includes("x-cpp") ||
+    normalized.includes("x-typescript") ||
+    normalized.includes("x-javascript") ||
+    normalized.includes("x-rust") ||
+    normalized.includes("sql") ||
+    normalized.includes("markdown") ||
+    normalized === "application/javascript" ||
+    normalized === "application/x-javascript"
+  );
+}
+
+function hasTextPreviewExtension(fileName: string): boolean {
+  const normalized = fileName.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+
+  if (TEXT_FILE_EXTENSIONS.has(normalized)) {
+    return true;
+  }
+
+  const dotIndex = normalized.lastIndexOf(".");
+  if (dotIndex < 0 || dotIndex === normalized.length - 1) {
+    return false;
+  }
+
+  return TEXT_FILE_EXTENSIONS.has(normalized.slice(dotIndex + 1));
+}
+
+function isPptxFile(item: Pick<MediaItem, "mimeType" | "filename" | "extension">): boolean {
+  const mime = item.mimeType.toLowerCase();
+  if (mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation" || mime === "application/vnd.ms-powerpoint") {
+    return true;
+  }
+
+  const extension = (item.extension || item.filename.split(".").pop() || "").toLowerCase();
+  return extension === "pptx" || extension === "ppt";
+}
+
+function isPdfFile(item: Pick<MediaItem, "mimeType" | "filename" | "extension">): boolean {
+  if (item.mimeType.toLowerCase() === "application/pdf") {
+    return true;
+  }
+
+  const extension = (item.extension || item.filename.split(".").pop() || "").toLowerCase();
+  return extension === "pdf";
+}
+
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
 
 function classifyMedia(item: MediaItem): Exclude<MediaFilter, "all"> {
   if (item.mimeType.startsWith("image/")) {
@@ -76,26 +222,22 @@ function formatPropertyValue(value: unknown): string {
   return String(value);
 }
 
-function mediaLabel(item: MediaItem): string {
-  const type = classifyMedia(item);
-  if (type === "image") {
+function classifyLabel(kind: Exclude<MediaFilter, "all">): string {
+  if (kind === "image") {
     return "Image";
   }
-  if (type === "video") {
+  if (kind === "video") {
     return "Video";
   }
-  if (type === "json") {
+  if (kind === "json") {
     return "JSON";
   }
   return "Other";
 }
 
-function isMobileDevice(): boolean {
-  if (typeof navigator === "undefined") {
-    return false;
-  }
-
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+function mediaLabel(item: MediaItem): string {
+  const type = classifyMedia(item);
+  return classifyLabel(type);
 }
 
 function normalizeQueryValue(value: string | null): string {
@@ -120,6 +262,11 @@ export default function MediaLibraryPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [previewSlideImageUrls, setPreviewSlideImageUrls] = useState<string[]>([]);
+  const [previewPdfPageImageUrls, setPreviewPdfPageImageUrls] = useState<string[]>([]);
+  const [previewTextContent, setPreviewTextContent] = useState<string | null>(null);
+  const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [propertiesItem, setPropertiesItem] = useState<MediaItem | null>(null);
@@ -162,6 +309,9 @@ export default function MediaLibraryPage() {
 
         return null;
       });
+      setPreviewPdfPageImageUrls([]);
+      setPreviewTextContent(null);
+      setPreviewMimeType(null);
       setPreviewLoading(false);
       setPreviewError(null);
       setPropertiesItem(null);
@@ -230,6 +380,11 @@ export default function MediaLibraryPage() {
 
         return null;
       });
+      setPreviewBlob(null);
+      setPreviewSlideImageUrls([]);
+      setPreviewPdfPageImageUrls([]);
+      setPreviewTextContent(null);
+      setPreviewMimeType(null);
       setPreviewLoading(false);
       setPreviewError(null);
       return;
@@ -248,6 +403,11 @@ export default function MediaLibraryPage() {
 
       return null;
     });
+    setPreviewBlob(null);
+    setPreviewSlideImageUrls([]);
+    setPreviewPdfPageImageUrls([]);
+    setPreviewTextContent(null);
+    setPreviewMimeType(currentPreviewItem.mimeType);
     setPreviewLoading(true);
     setPreviewError(null);
 
@@ -259,7 +419,52 @@ export default function MediaLibraryPage() {
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const response = await fetch(mediaViewUrl(currentPreviewItem.id), {
+        if (isPptxFile(currentPreviewItem)) {
+          const slidesResponse = await fetch(mediaPptxSlidesUrl(currentPreviewItem.id), {
+            credentials: "include",
+            headers,
+            signal: controller.signal
+          });
+
+          if (!slidesResponse.ok) {
+            throw new Error(`Slide preview request failed with status ${slidesResponse.status}`);
+          }
+
+          const payload = (await slidesResponse.json()) as { slides?: string[] };
+          if (disposed) {
+            return;
+          }
+
+          setPreviewSlideImageUrls((payload.slides ?? []).map((slidePath) => absoluteApiUrl(slidePath)));
+          setPreviewMimeType(currentPreviewItem.mimeType);
+          setPreviewLoading(false);
+          return;
+        }
+
+        if (isMobileDevice() && isPdfFile(currentPreviewItem)) {
+          const pagesResponse = await fetch(mediaPdfPagesUrl(currentPreviewItem.id), {
+            credentials: "include",
+            headers,
+            signal: controller.signal
+          });
+
+          if (!pagesResponse.ok) {
+            throw new Error(`PDF pages request failed with status ${pagesResponse.status}`);
+          }
+
+          const payload = (await pagesResponse.json()) as { pages?: string[] };
+          if (disposed) {
+            return;
+          }
+
+          setPreviewPdfPageImageUrls((payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath)));
+          setPreviewMimeType("application/pdf");
+          setPreviewLoading(false);
+          return;
+        }
+
+        const sourceUrl = mediaViewUrl(currentPreviewItem.id);
+        const response = await fetch(sourceUrl, {
           credentials: "include",
           headers,
           signal: controller.signal
@@ -267,6 +472,19 @@ export default function MediaLibraryPage() {
 
         if (!response.ok) {
           throw new Error(`Preview request failed with status ${response.status}`);
+        }
+
+        const resolvedMimeType = (response.headers.get("content-type") || currentPreviewItem.mimeType).split(";")[0].trim();
+        if (isTextPreviewMime(resolvedMimeType) || hasTextPreviewExtension(currentPreviewItem.filename)) {
+          const textContent = await response.text();
+          if (disposed) {
+            return;
+          }
+
+          setPreviewMimeType(resolvedMimeType);
+          setPreviewTextContent(textContent);
+          setPreviewLoading(false);
+          return;
         }
 
         const blob = await response.blob();
@@ -283,6 +501,8 @@ export default function MediaLibraryPage() {
 
           return objectUrl;
         });
+        setPreviewBlob(blob);
+        setPreviewMimeType(resolvedMimeType);
         setPreviewLoading(false);
       } catch (error) {
         if (disposed || (error instanceof DOMException && error.name === "AbortError")) {
@@ -344,12 +564,6 @@ export default function MediaLibraryPage() {
   function openPreview(item: MediaItem): void {
     setOpenMenuId(null);
     setPreviewError(null);
-
-    if (item.mimeType === "application/pdf" && isMobileDevice()) {
-      window.open(mediaViewUrl(item.id), "_blank", "noopener,noreferrer");
-      setStatus(`Opened ${item.filename} in a new tab for mobile PDF viewing.`);
-      return;
-    }
 
     if (!previewHistoryActiveRef.current) {
       window.history.pushState({ ...window.history.state, lfMediaPreview: true }, "");
@@ -498,6 +712,8 @@ export default function MediaLibraryPage() {
   }
 
   function renderPreviewContent(item: MediaItem) {
+    const resolvedPreviewMimeType = previewMimeType || item.mimeType;
+
     if (previewLoading) {
       return (
         <div className="flex h-full items-center justify-center rounded-lg border border-outline-variant/15 bg-surface-container-low text-sm text-on-surface-variant">
@@ -514,38 +730,16 @@ export default function MediaLibraryPage() {
       );
     }
 
-    if (!previewObjectUrl) {
-      return (
-        <div className="flex h-full items-center justify-center rounded-lg border border-outline-variant/15 bg-surface-container-low text-sm text-on-surface-variant">
-          Preview unavailable.
-        </div>
-      );
-    }
-
-    if (item.mimeType.startsWith("image/")) {
-      return <img src={previewObjectUrl} alt={item.filename} className="h-full w-full rounded-lg object-contain" draggable={false} />;
-    }
-
-    if (item.mimeType.startsWith("video/")) {
-      return <video src={previewObjectUrl} className="h-full w-full rounded-lg bg-black object-contain" controls autoPlay />;
-    }
-
-    if (item.mimeType === "application/pdf" || item.mimeType.startsWith("text/") || item.mimeType.includes("json")) {
-      return <iframe src={previewObjectUrl} title={item.filename} className="h-full w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest" />;
-    }
-
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border border-outline-variant/15 bg-surface-container-low text-center text-sm text-on-surface-variant">
-        <p>Preview is not available for this file type.</p>
-        <a
-          href={mediaViewUrl(item.id)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-md border border-outline-variant/20 bg-surface-container px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-on-surface transition-colors hover:text-primary"
-        >
-          Open file in new tab
-        </a>
-      </div>
+      <FileViewer
+        fileName={item.filename}
+        mimeType={resolvedPreviewMimeType}
+        objectUrl={previewObjectUrl ?? undefined}
+        blob={previewBlob ?? undefined}
+        textContent={previewTextContent ?? undefined}
+        pdfPageImageUrls={previewPdfPageImageUrls}
+        pptxSlideImageUrls={previewSlideImageUrls}
+      />
     );
   }
 
@@ -739,7 +933,7 @@ export default function MediaLibraryPage() {
                     className={`relative cursor-pointer overflow-visible rounded-xl border bg-surface-container p-3 transition-colors hover:bg-surface-container-high ${
                       menuOpen ? "z-40" : "z-0"
                     } ${
-                      focusedBySuggestion ? "border-primary/35 shadow-[inset_0_0_0_1px_rgba(75,188,214,0.2)]" : "border-outline-variant/20"
+                      focusedBySuggestion ? "border-primary/35 shadow-[inset_0_0_0_1px_rgba(111,77,230,0.2)]" : "border-outline-variant/20"
                     }`}
                     role="button"
                     tabIndex={0}
@@ -782,7 +976,7 @@ export default function MediaLibraryPage() {
                   </div>
 
                   {openMenuId === item.id ? (
-                    <div className="absolute left-0 right-0 top-[calc(100%+0.55rem)] z-[80]">{renderActionsMenu(item)}</div>
+                    <div className="absolute right-0 top-[calc(100%+0.55rem)] z-[80] w-[18rem] max-w-[calc(100vw-2rem)]">{renderActionsMenu(item)}</div>
                   ) : null}
                 </article>
                 );
@@ -802,7 +996,7 @@ export default function MediaLibraryPage() {
                     className={`relative flex cursor-pointer items-center justify-between gap-4 overflow-visible rounded-lg border bg-surface-container px-4 py-3 transition-colors hover:bg-surface-container-high ${
                       menuOpen ? "z-40" : "z-0"
                     } ${
-                      focusedBySuggestion ? "border-primary/35 shadow-[inset_0_0_0_1px_rgba(75,188,214,0.2)]" : "border-outline-variant/20"
+                      focusedBySuggestion ? "border-primary/35 shadow-[inset_0_0_0_1px_rgba(111,77,230,0.2)]" : "border-outline-variant/20"
                     }`}
                     role="button"
                     tabIndex={0}
@@ -839,7 +1033,7 @@ export default function MediaLibraryPage() {
                   </div>
 
                   {openMenuId === item.id ? (
-                    <div className="absolute left-0 right-0 top-[calc(100%+0.55rem)] z-[80]">{renderActionsMenu(item)}</div>
+                    <div className="absolute right-0 top-[calc(100%+0.55rem)] z-[80] w-[18rem] max-w-[calc(100vw-2rem)]">{renderActionsMenu(item)}</div>
                   ) : null}
                 </article>
                 );
@@ -850,7 +1044,7 @@ export default function MediaLibraryPage() {
 
         {previewItem ? (
           <div
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgb(20_24_30_/_0.86)] p-3 sm:p-5"
+            className="fixed inset-x-0 bottom-0 top-14 z-[70] flex items-center justify-center bg-[rgb(20_24_30_/_0.86)] p-3 sm:p-5"
             onClick={() => {
               closePreview();
             }}
@@ -868,14 +1062,6 @@ export default function MediaLibraryPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <a
-                    href={mediaViewUrl(previewItem.id)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-md border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-on-surface transition-colors hover:text-primary"
-                  >
-                    Open
-                  </a>
                   <button
                     type="button"
                     className="rounded-md border border-outline-variant/20 bg-surface-container-low px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-on-surface"

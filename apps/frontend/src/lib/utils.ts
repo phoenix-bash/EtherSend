@@ -35,7 +35,10 @@ export function formatDateTimeDdMmYyyyHm(value: Date | number | string): string 
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = String(date.getFullYear());
-  const hours = String(date.getHours()).padStart(2, "0");
+  const rawHours = date.getHours();
+  const period = rawHours >= 12 ? "PM" : "AM";
+  const hour12 = rawHours % 12 || 12;
+  const hours = String(hour12).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${day}/${month}/${year} ${hours}:${minutes}`;
+  return `${day}/${month}/${year} ${hours}:${minutes} ${period}`;
 }

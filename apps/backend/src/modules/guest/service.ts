@@ -1,17 +1,61 @@
 import { createHash, randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
 import { HttpError } from "../../utils/http-error.js";
 
 const GUEST_COOKIE_NAME = "lf_guest";
-const GUEST_SESSION_TTL_MS = 30 * 60 * 1000;
-const GUEST_COOKIE_MAX_AGE_SECONDS = 30 * 60;
+const GUEST_SESSION_TTL_MS = 15 * 60 * 1000;
+const GUEST_COOKIE_MAX_AGE_SECONDS = 15 * 60;
 
 function hashToken(token: string): string {
   return createHash("sha256").update(`${token}:${env.GUEST_SESSION_SECRET}`).digest("hex");
 }
 
 export class GuestService {
+  private async sumGuestLegacyBytes(sessionId: string): Promise<bigint> {
+    const usage = await prisma.mediaFile.aggregate({
+      where: {
+        ownerType: "GUEST",
+        guestSessionId: sessionId
+      },
+      _sum: {
+        sizeBytes: true
+      }
+    });
+
+    return usage._sum.sizeBytes ?? 0n;
+  }
+
+  private async sumGuestV2Bytes(sessionId: string): Promise<bigint> {
+    try {
+      const usage = await prisma.v2Upload.aggregate({
+        where: {
+          userId: `guest:${sessionId}`,
+          status: {
+            in: ["PENDING", "UPLOADING", "COMPLETED"]
+          }
+        },
+        _sum: {
+          fileSize: true
+        }
+      });
+
+      return usage._sum.fileSize ?? 0n;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021") {
+        return 0n;
+      }
+
+      throw error;
+    }
+  }
+
+  private async resolveGuestUsageBytes(sessionId: string): Promise<bigint> {
+    const [legacyBytes, v2Bytes] = await Promise.all([this.sumGuestLegacyBytes(sessionId), this.sumGuestV2Bytes(sessionId)]);
+    return legacyBytes + v2Bytes;
+  }
+
   getCookieName(): string {
     return GUEST_COOKIE_NAME;
   }
@@ -49,12 +93,10 @@ export class GuestService {
       throw new HttpError(401, "Guest session not found");
     }
 
-    if (guest.uploadCount >= 6) {
-      throw new HttpError(429, "Guest upload limit reached");
-    }
+    const currentBytes = await this.resolveGuestUsageBytes(sessionId);
+    const projectedBytes = currentBytes + BigInt(Math.max(0, fileBytes));
 
-    const currentBytes = Number(guest.totalBytes);
-    if (currentBytes + fileBytes > env.MAX_UPLOAD_BYTES) {
+    if (projectedBytes > BigInt(env.MAX_UPLOAD_BYTES)) {
       throw new HttpError(413, "Guest storage limit reached");
     }
   }
@@ -73,9 +115,7 @@ export class GuestService {
       where: { id: sessionId },
       data: {
         startedAt,
-        expiresAt,
-        uploadCount: { increment: 1 },
-        totalBytes: guest.totalBytes + BigInt(fileBytes)
+        expiresAt
       }
     });
 

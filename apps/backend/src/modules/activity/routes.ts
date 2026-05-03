@@ -3,6 +3,10 @@ import { z } from "zod";
 import { prisma } from "../../config/prisma.js";
 import { ensureGuestSession } from "../../middlewares/guest-session.js";
 
+const activityQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional()
+});
+
 type Actor =
   | { kind: "user"; userId: string; role: "ADMIN" | "USER" }
   | { kind: "guest"; guestSessionId: string; requestStartMs: number };
@@ -108,15 +112,25 @@ function batchWhereForActor(actor: Actor) {
 }
 
 export async function registerActivityRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/activity", { preHandler: [ensureGuestSession] }, async (request) => {
-    const parsedQuery = z
-      .object({
-        limit: z.coerce.number().int().min(1).max(100).optional()
-      })
-      .safeParse(request.query ?? {});
+  app.get(
+    "/activity",
+    {
+      preHandler: [ensureGuestSession],
+      config: {
+        rateLimit: {
+          max: 60,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const parsedQuery = activityQuerySchema.safeParse(request.query ?? {});
+      if (!parsedQuery.success) {
+        return reply.status(400).send({ error: "Invalid query", details: parsedQuery.error.flatten() });
+      }
 
-    const limit = parsedQuery.success ? parsedQuery.data.limit ?? 20 : 20;
-    const actor = await resolveActor(app, request);
+      const limit = parsedQuery.data.limit ?? 20;
+      const actor = await resolveActor(app, request);
 
     const mediaWhere = mediaWhereForActor(actor);
 
@@ -216,6 +230,7 @@ export async function registerActivityRoutes(app: FastifyInstance): Promise<void
         createdAt: item.createdAt
       }));
 
-    return { items };
-  });
+      return { items };
+    }
+  );
 }

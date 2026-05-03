@@ -77,6 +77,62 @@ Stop only the TLS proxy:
 - Set `MAINTENANCE_API_KEY` (optional) to protect cleanup maintenance routes via `x-maintenance-key` header.
 - Azure Blob adapter is intentionally stubbed for phase-2 cloud cutover.
 - Cleanup queue + worker scaffold is implemented; recurring scheduling is the next increment.
+- Legacy media routes still use local filesystem storage. New v2 upload routes use direct-to-S3 style uploads.
+
+## V2 Upload (Direct-to-S3 / MinIO Dev)
+
+The v2 upload system is additive and isolated from existing upload routes.
+
+- External API path: `/api/v2/upload/*`
+- Backend never receives file binaries for v2 uploads
+- Feature flag: `ENABLE_V2_UPLOAD=false` by default
+- Frontend flags:
+  - `NEXT_PUBLIC_ENABLE_V2_UPLOAD=false`
+  - `NEXT_PUBLIC_V2_UPLOAD_CANARY_PERCENT=0`
+  - `NEXT_PUBLIC_V2_UPLOAD_FALLBACK_TO_V1=true`
+
+### Local Dev with MinIO
+
+1. Copy env templates and set v2 values:
+   - root `.env`
+   - backend `apps/backend/.env`
+   - frontend `apps/frontend/.env.local`
+2. Start MinIO + infra and bootstrap bucket/CORS:
+   - `bash deploy/minio/start_v2_upload_dev.sh`
+3. Ensure backend v2 storage env values:
+   - `ENABLE_V2_UPLOAD=true`
+   - `V2_S3_BUCKET=linkforge-dev-v2`
+   - `V2_S3_REGION=ap-south-1`
+   - `V2_S3_ENDPOINT=http://localhost:9000`
+   - `V2_S3_FORCE_PATH_STYLE=true`
+   - `V2_S3_ACCESS_KEY_ID=minioadmin`
+   - `V2_S3_SECRET_ACCESS_KEY=minioadmin123`
+4. Run app:
+   - `pnpm dev`
+5. Open dedicated v2 UI:
+   - `/v2-upload`
+
+### Production S3 Readiness
+
+- Use same v2 code path with AWS S3 by changing env values only:
+  - unset `V2_S3_ENDPOINT`
+  - set `V2_S3_FORCE_PATH_STYLE=false`
+  - set AWS credentials + bucket/region
+- Keep `NEXT_PUBLIC_API_BASE_URL=/api` for reverse-proxy mode.
+
+### Rollback Instructions
+
+If v2 upload causes issues:
+
+1. Disable v2 backend:
+   - `ENABLE_V2_UPLOAD=false`
+2. Disable v2 frontend:
+   - `NEXT_PUBLIC_ENABLE_V2_UPLOAD=false`
+3. Restart services:
+   - `pm2 restart linkforge-backend`
+   - `pm2 restart linkforge-frontend`
+
+Legacy upload routes remain active and unaffected.
 
 ## AWS Deployment (EC2)
 
@@ -135,6 +191,6 @@ Install units (run as root):
 
 ### Important
 
-- Current media storage provider is local filesystem (`apps/backend/storage`).
-- For single-instance EC2 this works with EBS persistence.
-- For multi-instance scaling, implement an S3-backed storage provider and switch routes/services to use provider injection.
+- Current legacy media storage provider is local filesystem (`apps/backend/storage`).
+- V2 upload routes are direct-to-S3 compatible and support MinIO in local development.
+- For single-instance EC2, legacy local storage works with EBS persistence.

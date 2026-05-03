@@ -1,9 +1,11 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { AuthProvider, type User } from "@prisma/client";
 import { compare, hash } from "bcryptjs";
 import { env } from "../../config/env.js";
 import type { EmailProvider } from "../../providers/email/email-provider.js";
+import { buildThemeEmailHtml, buildThemeEmailText } from "../../providers/email/theme.js";
 import { LocalStorageProvider } from "../../providers/storage/local-storage.provider.js";
+import { formatDateTimeDdMmYyyyHmAmPm } from "../../utils/date-time.js";
 import { HttpError } from "../../utils/http-error.js";
 import { AuthRepository } from "./repository.js";
 import {
@@ -17,6 +19,7 @@ import {
 const PASSWORD_SALT_ROUNDS = 12;
 const VERIFICATION_TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
 const RESET_TOKEN_TTL_MS = 1000 * 60 * 30;
+const ACCOUNT_DELETION_CODE_TTL_MS = 1000 * 60 * 10;
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 const MAX_ACTIVE_SESSIONS = 5;
 
@@ -116,11 +119,17 @@ export class AuthService {
   }
 
   async signInWithOAuth(input: OAuthSignInInput): Promise<User> {
+    const provider: AuthProvider = input.provider === "google" ? "GOOGLE" : "GITHUB";
+
+    const existingByIdentity = await this.repository.findUserByIdentity(provider, input.providerSubjectId);
+    if (existingByIdentity) {
+      this.assertPasswordResetNotRequired(existingByIdentity);
+      return existingByIdentity;
+    }
+
     if (!input.email || !input.emailVerified) {
       throw new HttpError(401, "OAuth provider must return a verified email");
     }
-
-    const provider: AuthProvider = input.provider === "google" ? "GOOGLE" : "GITHUB";
 
     const user = await this.repository.upsertUserAndIdentity({
       provider,
@@ -257,7 +266,19 @@ export class AuthService {
   }
 
   async touchSession(sessionId: string): Promise<void> {
-    await this.repository.touchSession(sessionId);
+    await this.repository.touchSession({
+      sessionId,
+      expiresAt: new Date(Date.now() + SESSION_TTL_MS)
+    });
+  }
+
+  async rotateRefreshSession(sessionId: string, refreshToken: string): Promise<void> {
+    const refreshTokenHash = createTokenHash(refreshToken);
+    await this.repository.touchSession({
+      sessionId,
+      expiresAt: new Date(Date.now() + SESSION_TTL_MS),
+      refreshTokenHash
+    });
   }
 
   async listActiveSessions(userId: string, currentSessionId?: string): Promise<ActiveSessionView[]> {
@@ -343,7 +364,60 @@ export class AuthService {
     await this.repository.revokeAllActiveSessions(user.id, "password_reset");
   }
 
-  async permanentlyDeleteAccount(userId: string): Promise<void> {
+  async requestAccountDeletionVerification(userId: string, timeZone?: string): Promise<void> {
+    const emailProvider = this.requireEmailProvider();
+    const user = await this.repository.findUserById(userId);
+
+    if (!user) {
+      throw new HttpError(404, "Account not found");
+    }
+
+    if (!user.emailVerifiedAt) {
+      throw new HttpError(403, "A verified email is required to permanently delete this account.");
+    }
+
+    const deletionCode = String(randomInt(100000, 1000000));
+    const deletionCodeHash = createTokenHash(deletionCode);
+    const deletionCodeExpiresAt = new Date(Date.now() + ACCOUNT_DELETION_CODE_TTL_MS);
+
+    await this.repository.storeAccountDeletionCode(user.id, deletionCodeHash, deletionCodeExpiresAt);
+
+    await emailProvider.sendEmail({
+      to: user.email,
+      subject: "Confirm your EtherSend account deletion",
+      html: this.buildAccountDeletionCodeEmailHtml({
+        recipientName: user.name,
+        verificationCode: deletionCode,
+        expiresAt: deletionCodeExpiresAt,
+        timeZone
+      }),
+      text: this.buildAccountDeletionCodeEmailText({
+        recipientName: user.name,
+        verificationCode: deletionCode,
+        expiresAt: deletionCodeExpiresAt,
+        timeZone
+      })
+    });
+  }
+
+  async permanentlyDeleteAccount(userId: string, verificationCode: string): Promise<void> {
+    const user = await this.repository.findUserById(userId);
+    if (!user) {
+      throw new HttpError(404, "Account not found");
+    }
+
+    const storedCodeHash = (user as { accountDeletionCodeHash?: string | null }).accountDeletionCodeHash ?? null;
+    const storedCodeExpiresAt = (user as { accountDeletionCodeExpiresAt?: Date | null }).accountDeletionCodeExpiresAt ?? null;
+    const providedCodeHash = createTokenHash(verificationCode);
+
+    if (!storedCodeHash || !storedCodeExpiresAt || storedCodeExpiresAt.getTime() <= Date.now() || storedCodeHash !== providedCodeHash) {
+      throw new HttpError(401, "Deletion verification code is invalid or expired.", {
+        code: "ACCOUNT_DELETE_VERIFICATION_INVALID"
+      });
+    }
+
+    await this.repository.clearAccountDeletionCode(userId);
+
     const storagePaths = await this.repository.listOwnedStoragePaths(userId);
     const deleted = await this.repository.permanentlyDeleteAccount(userId);
 
@@ -390,19 +464,16 @@ export class AuthService {
 
   private buildVerificationEmailHtml(input: { recipientName?: string; verificationUrl: string }): string {
     const greeting = input.recipientName ? `Hi ${input.recipientName},` : "Hi,";
-    return `
-      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a;max-width:560px;margin:0 auto;">
-        <h2 style="margin-bottom:8px;">Verify your EtherSend account</h2>
-        <p>${greeting}</p>
-        <p>Thanks for signing up. Please verify your email address to activate your account.</p>
-        <p style="margin:24px 0;">
-          <a href="${input.verificationUrl}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#1e90a8;color:#ffffff;text-decoration:none;font-weight:700;">Verify email</a>
-        </p>
-        <p>If the button does not work, copy and paste this URL:</p>
-        <p style="word-break:break-all;">${input.verificationUrl}</p>
-        <p style="margin-top:20px;color:#475569;font-size:12px;">This link expires in 24 hours.</p>
-      </div>
-    `;
+    return buildThemeEmailHtml({
+      eyebrow: "Account Security",
+      title: "Verify your EtherSend account",
+      intro: `${greeting} Thanks for signing up. Please verify your email address to activate your account.`,
+      actionLabel: "Verify email",
+      actionUrl: input.verificationUrl,
+      fallbackLabel: "If the button does not work, copy and paste this URL:",
+      fallbackValue: input.verificationUrl,
+      footer: "This link expires in 24 hours."
+    });
   }
 
   private buildVerificationEmailText(input: { recipientName?: string; verificationUrl: string }): string {
@@ -412,23 +483,47 @@ export class AuthService {
 
   private buildPasswordResetEmailHtml(input: { recipientName?: string | null; resetUrl: string }): string {
     const greeting = input.recipientName ? `Hi ${input.recipientName},` : "Hi,";
-    return `
-      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a;max-width:560px;margin:0 auto;">
-        <h2 style="margin-bottom:8px;">Reset your EtherSend password</h2>
-        <p>${greeting}</p>
-        <p>We received a request to reset your password.</p>
-        <p style="margin:24px 0;">
-          <a href="${input.resetUrl}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#1e90a8;color:#ffffff;text-decoration:none;font-weight:700;">Reset password</a>
-        </p>
-        <p>If the button does not work, copy and paste this URL:</p>
-        <p style="word-break:break-all;">${input.resetUrl}</p>
-        <p style="margin-top:20px;color:#475569;font-size:12px;">This link expires in 30 minutes. If you did not request this, you can ignore this email.</p>
-      </div>
-    `;
+    return buildThemeEmailHtml({
+      eyebrow: "Account Security",
+      title: "Reset your EtherSend password",
+      intro: `${greeting} We received a request to reset your password.`,
+      actionLabel: "Reset password",
+      actionUrl: input.resetUrl,
+      fallbackLabel: "If the button does not work, copy and paste this URL:",
+      fallbackValue: input.resetUrl,
+      footer: "This link expires in 30 minutes. If you did not request this, you can ignore this email."
+    });
   }
 
   private buildPasswordResetEmailText(input: { recipientName?: string | null; resetUrl: string }): string {
     const greeting = input.recipientName ? `Hi ${input.recipientName},` : "Hi,";
     return `${greeting}\n\nReset your EtherSend password by opening this link:\n${input.resetUrl}\n\nThis link expires in 30 minutes.`;
+  }
+
+  private buildAccountDeletionCodeEmailHtml(input: { recipientName?: string | null; verificationCode: string; expiresAt: Date; timeZone?: string }): string {
+    const greeting = input.recipientName ? `Hi ${input.recipientName},` : "Hi,";
+    return buildThemeEmailHtml({
+      eyebrow: "Danger Zone",
+      title: "Confirm account deletion",
+      intro: `${greeting} Enter this verification code to permanently delete your EtherSend account.`,
+      fields: [
+        { label: "Verification code", value: input.verificationCode },
+        { label: "Valid until", value: formatDateTimeDdMmYyyyHmAmPm(input.expiresAt, input.timeZone) }
+      ],
+      footer: "If you did not initiate account deletion, you can ignore this email."
+    });
+  }
+
+  private buildAccountDeletionCodeEmailText(input: { recipientName?: string | null; verificationCode: string; expiresAt: Date; timeZone?: string }): string {
+    const greeting = input.recipientName ? `Hi ${input.recipientName},` : "Hi,";
+    return buildThemeEmailText({
+      title: "Confirm account deletion",
+      intro: `${greeting} Enter this verification code to permanently delete your EtherSend account.`,
+      fields: [
+        { label: "Verification code", value: input.verificationCode },
+        { label: "Valid until", value: formatDateTimeDdMmYyyyHmAmPm(input.expiresAt, input.timeZone) }
+      ],
+      footer: "If you did not initiate account deletion, you can ignore this email."
+    });
   }
 }

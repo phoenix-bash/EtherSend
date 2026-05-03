@@ -7,10 +7,34 @@ import { enforceMediaAccess } from "../../middlewares/access-control.js";
 import { LocalStorageProvider } from "../../providers/storage/local-storage.provider.js";
 import { HttpError } from "../../utils/http-error.js";
 import { MediaRepository } from "./repository.js";
+import { OfficePreviewService } from "./office-preview.service.js";
+import { PdfPagePreviewService } from "./pdf-page-preview.service.js";
+import { PptxSlidePreviewService } from "./pptx-slide-preview.service.js";
 import { MediaService } from "./service.js";
 
 const service = new MediaService(new MediaRepository());
 const storage = new LocalStorageProvider();
+const officePreviewService = new OfficePreviewService();
+const pdfPagePreviewService = new PdfPagePreviewService();
+const pptxSlidePreviewService = new PptxSlidePreviewService();
+
+const mediaIdParamSchema = z.object({
+  mediaId: z.string().uuid()
+});
+
+const mediaAccessQuerySchema = z.object({
+  disposition: z.enum(["view", "download"]).optional()
+});
+
+const mediaSlideParamSchema = z.object({
+  mediaId: z.string().uuid(),
+  slideFileName: z.string().min(1)
+});
+
+const mediaPdfPageParamSchema = z.object({
+  mediaId: z.string().uuid(),
+  pageFileName: z.string().min(1)
+});
 
 function serializeMedia(media: MediaFile) {
   return {
@@ -57,145 +81,407 @@ function canMutateMedia(media: MediaFile, actor: Actor): boolean {
 }
 
 export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
-  app.post("/media/upload", { preHandler: [ensureGuestSession] }, async (request, reply) => {
-    const part = await request.file();
-    if (!part) {
-      return reply.status(400).send({ error: "File is required" });
-    }
-
-    const authHeader = request.headers.authorization;
-    let userId: string | undefined;
-
-    if (authHeader) {
-      try {
-        await request.jwtVerify();
-        userId = request.user.sub;
-      } catch {
-        userId = undefined;
+  app.post(
+    "/media/upload",
+    {
+      preHandler: [ensureGuestSession],
+      config: {
+        rateLimit: {
+          max: 20,
+          timeWindow: "1 minute"
+        }
       }
+    },
+    async (request, reply) => {
+      const part = await request.file();
+      if (!part) {
+        return reply.status(400).send({ error: "File is required" });
+      }
+
+      let userId: string | undefined;
+      if (request.headers.authorization) {
+        try {
+          await request.jwtVerify();
+          userId = request.user.sub;
+        } catch {
+          userId = undefined;
+        }
+      }
+
+      const guestSessionId = userId ? undefined : String(request.headers["x-guest-session-id"] || "");
+      const media = await service.upload({ file: part, userId, guestSessionId });
+      return reply.status(201).send({ media: serializeMedia(media) });
     }
+  );
 
-    const guestSessionId = userId ? undefined : String(request.headers["x-guest-session-id"] || "");
-    const media = await service.upload({ file: part, userId, guestSessionId });
-    return reply.status(201).send({ media: serializeMedia(media) });
-  });
+  app.post(
+    "/media/:mediaId/replace",
+    {
+      preHandler: [ensureGuestSession],
+      config: {
+        rateLimit: {
+          max: 12,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const mediaIdResult = mediaIdParamSchema.safeParse(request.params);
+      if (!mediaIdResult.success) {
+        return reply.status(400).send({ error: "Invalid media id" });
+      }
 
-  app.post("/media/:mediaId/replace", { preHandler: [ensureGuestSession] }, async (request, reply) => {
-    const mediaId = (request.params as { mediaId: string }).mediaId;
-    const part = await request.file();
+      const mediaId = mediaIdResult.data.mediaId;
+      const part = await request.file();
 
-    if (!part) {
-      return reply.status(400).send({ error: "File is required" });
+      if (!part) {
+        return reply.status(400).send({ error: "File is required" });
+      }
+
+      const actor = await resolveActor(request);
+      const mediaRecord = await new MediaRepository().findById(mediaId);
+      if (!mediaRecord) {
+        return reply.status(404).send({ error: "Media not found" });
+      }
+
+      if (!canMutateMedia(mediaRecord, actor)) {
+        return reply.status(403).send({ error: "Replace not allowed" });
+      }
+
+      const media = await service.replace(mediaId, part);
+      return reply.send({ media: serializeMedia(media) });
     }
+  );
 
-    const actor = await resolveActor(request);
-    const mediaRecord = await new MediaRepository().findById(mediaId);
-    if (!mediaRecord) {
-      return reply.status(404).send({ error: "Media not found" });
+  app.patch(
+    "/media/:mediaId/toggles",
+    {
+      preHandler: [ensureGuestSession],
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const mediaIdResult = mediaIdParamSchema.safeParse(request.params);
+      if (!mediaIdResult.success) {
+        return reply.status(400).send({ error: "Invalid media id" });
+      }
+
+      const mediaId = mediaIdResult.data.mediaId;
+      const schema = z.object({
+        isActive: z.boolean().optional(),
+        allowDownload: z.boolean().optional()
+      });
+
+      const parseResult = schema.safeParse(request.body);
+      if (!parseResult.success) {
+        return reply.status(400).send({ error: "Invalid payload" });
+      }
+
+      const actor = await resolveActor(request);
+      const mediaRecord = await new MediaRepository().findById(mediaId);
+      if (!mediaRecord) {
+        return reply.status(404).send({ error: "Media not found" });
+      }
+
+      if (!canMutateMedia(mediaRecord, actor)) {
+        return reply.status(403).send({ error: "Toggle update not allowed" });
+      }
+
+      const media = await new MediaRepository().setToggles(mediaId, parseResult.data);
+      return reply.send({ media: serializeMedia(media) });
     }
+  );
 
-    if (!canMutateMedia(mediaRecord, actor)) {
-      return reply.status(403).send({ error: "Replace not allowed" });
+  app.delete(
+    "/media/:mediaId",
+    {
+      preHandler: [ensureGuestSession],
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const mediaIdResult = mediaIdParamSchema.safeParse(request.params);
+      if (!mediaIdResult.success) {
+        return reply.status(400).send({ error: "Invalid media id" });
+      }
+
+      const mediaId = mediaIdResult.data.mediaId;
+      const actor = await resolveActor(request);
+      const repo = new MediaRepository();
+      const media = await repo.findById(mediaId);
+
+      if (!media) {
+        return reply.status(404).send({ error: "Media not found" });
+      }
+
+      if (!canMutateMedia(media, actor)) {
+        return reply.status(403).send({ error: "Delete not allowed" });
+      }
+
+      await storage.delete(media.storagePath);
+      await repo.hardDelete(media.id);
+      return reply.status(204).send();
     }
+  );
 
-    const media = await service.replace(mediaId, part);
-    return reply.send({ media: serializeMedia(media) });
-  });
+  app.get(
+    "/media",
+    {
+      preHandler: [ensureGuestSession],
+      config: {
+        rateLimit: {
+          max: 60,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const actor = await resolveActor(request);
+      const repo = new MediaRepository();
+      const items =
+        actor.kind === "user"
+          ? await repo.listByUser(actor.userId, actor.role, 50)
+          : await repo.listByGuest(actor.guestSessionId, actor.requestStartMs, 50);
 
-  app.patch("/media/:mediaId/toggles", { preHandler: [ensureGuestSession] }, async (request, reply) => {
-    const mediaId = (request.params as { mediaId: string }).mediaId;
-    const schema = z.object({
-      isActive: z.boolean().optional(),
-      allowDownload: z.boolean().optional()
-    });
+      if (actor.kind === "guest" && !request.headers.authorization && !request.cookies.lf_access_token) {
+        reply.header("x-linkforge-actor", "guest");
+      }
 
-    const parseResult = schema.safeParse(request.body);
-    if (!parseResult.success) {
-      return reply.status(400).send({ error: "Invalid payload" });
+      return { items: items.map(serializeMedia) };
     }
+  );
 
-    const actor = await resolveActor(request);
-    const mediaRecord = await new MediaRepository().findById(mediaId);
-    if (!mediaRecord) {
-      return reply.status(404).send({ error: "Media not found" });
+  app.post(
+    "/media/:mediaId/claim",
+    {
+      preHandler: [requireAuth, ensureGuestSession],
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const requestStartMs = Date.now();
+      const mediaIdResult = mediaIdParamSchema.safeParse(request.params);
+      if (!mediaIdResult.success) {
+        return reply.status(400).send({ error: "Invalid media id" });
+      }
+
+      const mediaId = mediaIdResult.data.mediaId;
+      const guestSessionId = String(request.headers["x-guest-session-id"] || "");
+      const repo = new MediaRepository();
+      const media = await repo.findById(mediaId);
+
+      if (!media) {
+        return reply.status(404).send({ error: "Media not found" });
+      }
+
+      if (media.guestSessionId !== guestSessionId || !media.expiresAt || media.expiresAt.getTime() < requestStartMs) {
+        return reply.status(403).send({ error: "Claim not allowed" });
+      }
+
+      const claimed = await repo.claimToUser(mediaId, request.user.sub);
+      return reply.send({ media: serializeMedia(claimed) });
     }
+  );
 
-    if (!canMutateMedia(mediaRecord, actor)) {
-      return reply.status(403).send({ error: "Toggle update not allowed" });
+  app.get(
+    "/m/:mediaId/pdf-pages",
+    {
+      config: {
+        rateLimit: {
+          max: 40,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const mediaIdResult = mediaIdParamSchema.safeParse(request.params);
+      if (!mediaIdResult.success) {
+        return reply.status(400).send({ error: "Invalid media id" });
+      }
+
+      const mediaId = mediaIdResult.data.mediaId;
+      await enforceMediaAccess(mediaId, "view");
+      const media = await new MediaRepository().findById(mediaId);
+      if (!media) {
+        return reply.status(404).send({ error: "Not found" });
+      }
+
+      const pages = await pdfPagePreviewService.ensurePagePreview(media);
+      return reply.send({
+        pages: pages.map((fileName) => `/m/${mediaId}/pdf-pages/${encodeURIComponent(fileName)}`)
+      });
     }
+  );
 
-    const media = await new MediaRepository().setToggles(mediaId, parseResult.data);
-    return reply.send({ media: serializeMedia(media) });
-  });
+  app.get(
+    "/m/:mediaId/pdf-pages/:pageFileName",
+    {
+      config: {
+        rateLimit: {
+          max: 60,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const parseResult = mediaPdfPageParamSchema.safeParse(request.params);
+      if (!parseResult.success) {
+        return reply.status(400).send({ error: "Invalid page path" });
+      }
 
-  app.delete("/media/:mediaId", { preHandler: [ensureGuestSession] }, async (request, reply) => {
-    const mediaId = (request.params as { mediaId: string }).mediaId;
-    const actor = await resolveActor(request);
-    const repo = new MediaRepository();
-    const media = await repo.findById(mediaId);
+      const { mediaId, pageFileName } = parseResult.data;
+      await enforceMediaAccess(mediaId, "view");
+      const media = await new MediaRepository().findById(mediaId);
+      if (!media) {
+        return reply.status(404).send({ error: "Not found" });
+      }
 
-    if (!media) {
-      return reply.status(404).send({ error: "Media not found" });
+      const page = await pdfPagePreviewService.openPageStream(media, pageFileName);
+      reply.header("Content-Type", page.contentType);
+      reply.header("Content-Disposition", `inline; filename=\"${pageFileName}\"`);
+      return reply.send(page.stream);
     }
+  );
 
-    if (!canMutateMedia(media, actor)) {
-      return reply.status(403).send({ error: "Delete not allowed" });
+  app.get(
+    "/m/:mediaId/slides",
+    {
+      config: {
+        rateLimit: {
+          max: 40,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const mediaIdResult = mediaIdParamSchema.safeParse(request.params);
+      if (!mediaIdResult.success) {
+        return reply.status(400).send({ error: "Invalid media id" });
+      }
+
+      const mediaId = mediaIdResult.data.mediaId;
+      await enforceMediaAccess(mediaId, "view");
+      const media = await new MediaRepository().findById(mediaId);
+      if (!media) {
+        return reply.status(404).send({ error: "Not found" });
+      }
+
+      const slides = await pptxSlidePreviewService.ensureSlidePreview(media);
+      return reply.send({
+        slides: slides.map((fileName) => `/m/${mediaId}/slides/${encodeURIComponent(fileName)}`)
+      });
     }
+  );
 
-    await storage.delete(media.storagePath);
-    await repo.hardDelete(media.id);
-    return reply.status(204).send();
-  });
+  app.get(
+    "/m/:mediaId/slides/:slideFileName",
+    {
+      config: {
+        rateLimit: {
+          max: 60,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const parseResult = mediaSlideParamSchema.safeParse(request.params);
+      if (!parseResult.success) {
+        return reply.status(400).send({ error: "Invalid slide path" });
+      }
 
-  app.get("/media", { preHandler: [ensureGuestSession] }, async (request, reply) => {
-    const actor = await resolveActor(request);
-    const repo = new MediaRepository();
-    const items =
-      actor.kind === "user"
-        ? await repo.listByUser(actor.userId, actor.role, 50)
-        : await repo.listByGuest(actor.guestSessionId, actor.requestStartMs, 50);
+      const { mediaId, slideFileName } = parseResult.data;
+      await enforceMediaAccess(mediaId, "view");
+      const media = await new MediaRepository().findById(mediaId);
+      if (!media) {
+        return reply.status(404).send({ error: "Not found" });
+      }
 
-    if (actor.kind === "guest" && !request.headers.authorization && !request.cookies.lf_access_token) {
-      reply.header("x-linkforge-actor", "guest");
+      const slide = await pptxSlidePreviewService.openSlideStream(media, slideFileName);
+      reply.header("Content-Type", slide.contentType);
+      reply.header("Content-Disposition", `inline; filename=\"${slideFileName}\"`);
+      return reply.send(slide.stream);
     }
+  );
 
-    return { items: items.map(serializeMedia) };
-  });
+  app.get(
+    "/m/:mediaId/preview.pdf",
+    {
+      config: {
+        rateLimit: {
+          max: 40,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const mediaIdResult = mediaIdParamSchema.safeParse(request.params);
+      if (!mediaIdResult.success) {
+        return reply.status(400).send({ error: "Invalid media id" });
+      }
 
-  app.post("/media/:mediaId/claim", { preHandler: [requireAuth, ensureGuestSession] }, async (request, reply) => {
-    const requestStartMs = Date.now();
-    const mediaId = (request.params as { mediaId: string }).mediaId;
-    const guestSessionId = String(request.headers["x-guest-session-id"] || "");
-    const repo = new MediaRepository();
-    const media = await repo.findById(mediaId);
+      const mediaId = mediaIdResult.data.mediaId;
+      await enforceMediaAccess(mediaId, "view");
+      const media = await new MediaRepository().findById(mediaId);
+      if (!media) {
+        return reply.status(404).send({ error: "Not found" });
+      }
 
-    if (!media) {
-      return reply.status(404).send({ error: "Media not found" });
+      const previewStream = await officePreviewService.ensurePdfPreview(media);
+      const filenameWithoutExt = media.filename.replace(/\.[^./\\]+$/, "") || "document";
+      reply.header("Content-Type", "application/pdf");
+      reply.header("Content-Disposition", `inline; filename=\"${filenameWithoutExt}.pdf\"`);
+      return reply.send(previewStream);
     }
+  );
 
-    if (media.guestSessionId !== guestSessionId || !media.expiresAt || media.expiresAt.getTime() < requestStartMs) {
-      return reply.status(403).send({ error: "Claim not allowed" });
+  app.get(
+    "/m/:mediaId",
+    {
+      config: {
+        rateLimit: {
+          max: 120,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const mediaIdResult = mediaIdParamSchema.safeParse(request.params);
+      if (!mediaIdResult.success) {
+        return reply.status(400).send({ error: "Invalid media id" });
+      }
+
+      const queryResult = mediaAccessQuerySchema.safeParse(request.query);
+      if (!queryResult.success) {
+        return reply.status(400).send({ error: "Invalid query" });
+      }
+
+      const mediaId = mediaIdResult.data.mediaId;
+      const intent = queryResult.data.disposition ?? "view";
+
+      await enforceMediaAccess(mediaId, intent);
+      const media = await new MediaRepository().findById(mediaId);
+
+      if (!media) {
+        return reply.status(404).send({ error: "Not found" });
+      }
+
+      const stream = await storage.get(media.storagePath);
+      const disposition = intent === "download" ? "attachment" : "inline";
+      reply.header("Content-Type", media.mimeType);
+      reply.header("Content-Disposition", `${disposition}; filename=\"${media.filename}\"`);
+      return reply.send(stream);
     }
-
-    const claimed = await repo.claimToUser(mediaId, request.user.sub);
-    return reply.send({ media: serializeMedia(claimed) });
-  });
-
-  app.get("/m/:mediaId", async (request, reply) => {
-    const mediaId = (request.params as { mediaId: string }).mediaId;
-    const intent = ((request.query as { disposition?: string }).disposition || "view") as "view" | "download";
-
-    await enforceMediaAccess(mediaId, intent);
-    const media = await new MediaRepository().findById(mediaId);
-
-    if (!media) {
-      return reply.status(404).send({ error: "Not found" });
-    }
-
-    const stream = await storage.get(media.storagePath);
-    const disposition = intent === "download" ? "attachment" : "inline";
-    reply.header("Content-Type", media.mimeType);
-    reply.header("Content-Disposition", `${disposition}; filename=\"${media.filename}\"`);
-    return reply.send(stream);
-  });
+  );
 }

@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { listBatches, listMedia, type BatchListItem, type MediaItem } from "../../lib/api-client";
+import { getStorageLimits, listBatches, listMedia, type BatchListItem, type MediaItem } from "../../lib/api-client";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT } from "../../lib/events";
 import { useAuthSession } from "../../hooks/use-auth-session";
 import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
 
 const GUEST_STORAGE_CAP_BYTES = 100 * 1024 * 1024;
-const SIGNED_IN_STORAGE_CAP_BYTES = 512 * 1024 * 1024;
+const SIGNED_IN_STORAGE_CAP_BYTES = 250 * 1024 * 1024;
 
 interface OverviewState {
   totalFiles: number;
@@ -80,8 +80,10 @@ export function OverviewCards() {
   useEffect(() => {
     async function loadOverview() {
       try {
-        const [mediaResult, batchResult] = await Promise.all([listMedia(), listBatches()]);
-        const storageCapBytes = user ? SIGNED_IN_STORAGE_CAP_BYTES : GUEST_STORAGE_CAP_BYTES;
+        const [mediaResult, batchResult, limitsResult] = await Promise.all([listMedia(), listBatches(), getStorageLimits()]);
+        const storageCapBytes = user
+          ? Math.max(1, limitsResult.signedInStorageCapBytes || SIGNED_IN_STORAGE_CAP_BYTES)
+          : Math.max(1, limitsResult.guestStorageCapBytes || GUEST_STORAGE_CAP_BYTES);
         setOverview(computeOverview(mediaResult.items, batchResult.items, storageCapBytes, Date.now()));
       } catch {
         setOverview(null);
@@ -147,12 +149,13 @@ export function OverviewCards() {
   const ttlLabel = useMemo(() => formatTtl(overview?.nearestBatchExpiryAt ?? null, nowMs), [overview?.nearestBatchExpiryAt, nowMs]);
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-6 lg:grid-cols-4">
+    <section className="dashboard-section-band px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-5">
+      <div className="dashboard-overview-band grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-6 lg:grid-cols-4">
       <motion.article
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="group flex items-start justify-between rounded-lg border border-outline-variant/15 bg-surface-container-low p-3 transition-all hover:border-primary/20 sm:rounded-xl sm:p-4 md:p-6"
+        className="group flex items-start justify-between p-3 transition-all sm:p-4 md:p-6"
       >
         <div>
           <p className="text-[9px] font-label uppercase tracking-wider text-on-surface-variant sm:text-[10px] sm:tracking-widest">Remaining Storage</p>
@@ -182,7 +185,7 @@ export function OverviewCards() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.08, duration: 0.25 }}
-        className="group flex items-start justify-between rounded-lg border border-outline-variant/15 bg-surface-container-low p-3 transition-all hover:border-primary/20 sm:rounded-xl sm:p-4 md:p-6"
+        className="group flex items-start justify-between p-3 transition-all sm:p-4 md:p-6"
       >
         <div>
           <p className="text-[9px] font-label uppercase tracking-wider text-on-surface-variant sm:text-[10px] sm:tracking-widest">Total Media</p>
@@ -199,7 +202,7 @@ export function OverviewCards() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.16, duration: 0.25 }}
-        className="group flex items-start justify-between rounded-lg border border-outline-variant/15 bg-surface-container-low p-3 transition-all hover:border-primary/20 sm:rounded-xl sm:p-4 md:p-6"
+        className="group flex items-start justify-between p-3 transition-all sm:p-4 md:p-6"
       >
         <div>
           <p className="text-[9px] font-label uppercase tracking-wider text-on-surface-variant sm:text-[10px] sm:tracking-widest">Active Shares</p>
@@ -215,7 +218,7 @@ export function OverviewCards() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.24, duration: 0.25 }}
-        className="group flex items-start justify-between rounded-lg border border-outline-variant/15 bg-surface-container-low p-3 transition-all hover:border-primary/20 sm:rounded-xl sm:p-4 md:p-6"
+        className="group flex items-start justify-between p-3 transition-all sm:p-4 md:p-6"
       >
         <div className="min-w-0">
           <p className="text-[9px] font-label uppercase tracking-wider text-on-surface-variant sm:text-[10px] sm:tracking-widest">Media TTL</p>
@@ -226,6 +229,7 @@ export function OverviewCards() {
         </div>
         <span className="material-symbols-outlined text-2xl text-error/35 transition-colors group-hover:text-error sm:text-3xl md:text-4xl">timer</span>
       </motion.article>
-    </div>
+      </div>
+    </section>
   );
 }

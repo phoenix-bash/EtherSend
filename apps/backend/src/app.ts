@@ -14,6 +14,8 @@ import { registerQrRoutes } from "./modules/qr/routes.js";
 import { registerBatchRoutes } from "./modules/batches/routes.js";
 import { registerActivityRoutes } from "./modules/activity/routes.js";
 import { registerCleanupRoutes } from "./modules/cleanup/routes.js";
+import { registerDominatorRoutes } from "./modules/dominator/routes.js";
+import { registerV2UploadRoutes } from "./modules/v2-upload/routes.js";
 import { scheduleRecurringCleanup } from "./queues/cleanup-queue.js";
 
 function isLoopbackHostname(hostname: string): boolean {
@@ -62,6 +64,43 @@ const allowedCorsOrigins = new Set<string>(
     (origin): origin is string => Boolean(origin)
   )
 );
+
+function resolveRequestOrigin(headers: Record<string, unknown>): string | null {
+  const origin = String(headers.origin ?? "").trim();
+  if (origin) {
+    return normalizeOrigin(origin);
+  }
+
+  const referer = String(headers.referer ?? "").trim();
+  if (!referer) {
+    return null;
+  }
+
+  try {
+    return new URL(referer).origin;
+  } catch {
+    return null;
+  }
+}
+
+function hasCookieAuth(headers: Record<string, unknown>): boolean {
+  const rawCookie = String(headers.cookie ?? "");
+  if (!rawCookie) {
+    return false;
+  }
+
+  return (
+    rawCookie.includes("lf_access_token=") ||
+    rawCookie.includes("lf_refresh_token=") ||
+    rawCookie.includes("lf_guest=") ||
+    rawCookie.includes("lf_admin_session=")
+  );
+}
+
+function isStateChangingMethod(method: string): boolean {
+  const normalizedMethod = method.toUpperCase();
+  return normalizedMethod !== "GET" && normalizedMethod !== "HEAD" && normalizedMethod !== "OPTIONS";
+}
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = fastify({
@@ -128,7 +167,46 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   await app.register(rateLimit, {
     max: 100,
-    timeWindow: "1 minute"
+    timeWindow: "1 minute",
+    errorResponseBuilder: () => {
+      return {
+        error: "Too many requests",
+        details: {
+          code: "RATE_LIMITED"
+        }
+      };
+    }
+  });
+
+  app.addHook("onRequest", async (request, reply) => {
+    if (env.NODE_ENV !== "production") {
+      return;
+    }
+
+    if (!isStateChangingMethod(request.method)) {
+      return;
+    }
+
+    if (!hasCookieAuth(request.headers)) {
+      return;
+    }
+
+    const requestOrigin = resolveRequestOrigin(request.headers);
+    if (!requestOrigin || !allowedCorsOrigins.has(requestOrigin)) {
+      return reply.status(403).send({
+        error: "CSRF validation failed",
+        details: {
+          code: "CSRF_BLOCKED"
+        }
+      });
+    }
+  });
+
+  app.addHook("onSend", async (_request, reply) => {
+    reply.header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    reply.header("Referrer-Policy", "no-referrer");
+    reply.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    reply.header("X-Content-Type-Options", "nosniff");
   });
 
   await app.register(multipart, {
@@ -137,7 +215,34 @@ export async function buildApp(): Promise<FastifyInstance> {
     }
   });
 
-  app.get("/health", async () => ({ status: "ok" }));
+  app.get(
+    "/health",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async () => ({ status: "ok" })
+  );
+
+  app.get(
+    "/limits",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async () => ({
+      guestStorageCapBytes: env.MAX_UPLOAD_BYTES,
+      signedInStorageCapBytes: env.SIGNED_IN_MAX_TOTAL_BYTES
+    })
+  );
 
   await registerAuthRoutes(app);
   await registerMediaRoutes(app);
@@ -146,6 +251,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await registerBatchRoutes(app);
   await registerActivityRoutes(app);
   await registerCleanupRoutes(app);
+  await registerDominatorRoutes(app);
+  await registerV2UploadRoutes(app);
 
   try {
     const scheduler = await scheduleRecurringCleanup();
@@ -167,7 +274,8 @@ export async function buildApp(): Promise<FastifyInstance> {
       typeof (error as { statusCode?: unknown }).statusCode === "number"
         ? (error as { statusCode: number }).statusCode
         : 500;
-    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
+    const errorMessage =
+      env.NODE_ENV === "production" ? "Internal Server Error" : error instanceof Error ? error.message : "Internal Server Error";
 
     request.log.error(error);
     return reply.status(statusCode).send({

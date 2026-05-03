@@ -5,6 +5,7 @@ import { ImagePlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ApiError, uploadMedia } from "../../lib/api-client";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT, SYSTEM_LOG_EVENT } from "../../lib/events";
+import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
 import { useAuthSession } from "../../hooks/use-auth-session";
 import { clearPendingUploads, consumePendingUploads, hasPendingUploads, queuePendingUploads } from "../../lib/pending-upload-store";
 
@@ -14,21 +15,7 @@ interface UploadedMediaEntry {
   expiresAt: string | null;
 }
 
-const GUEST_UPLOAD_CHOICE_KEY = "ethersend:guest-upload-choice";
-const GUEST_CONTINUE_CHOICE = "continue";
 const GUEST_MODE_STORAGE_KEY = "lf_guest_mode_enabled";
-const GUEST_MAX_FILES_PER_BATCH = 6;
-
-function hasGuestUploadAccess(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return (
-    window.localStorage.getItem(GUEST_UPLOAD_CHOICE_KEY) === GUEST_CONTINUE_CHOICE ||
-    window.localStorage.getItem(GUEST_MODE_STORAGE_KEY) === "true"
-  );
-}
 
 export function MediaUploader() {
   const router = useRouter();
@@ -136,6 +123,10 @@ export function MediaUploader() {
             }
 
             setStatus(error.message);
+          } else if (error instanceof Error) {
+            setStatus(error.message);
+          } else {
+            setStatus("Upload failed due to unexpected error.");
           }
 
           window.dispatchEvent(
@@ -176,10 +167,6 @@ export function MediaUploader() {
       return;
     }
 
-    if (!user && !hasGuestUploadAccess()) {
-      return;
-    }
-
     const queuedFiles = consumePendingUploads();
     if (queuedFiles.length === 0) {
       return;
@@ -193,34 +180,14 @@ export function MediaUploader() {
       return;
     }
 
-    if (!user && files.length > GUEST_MAX_FILES_PER_BATCH) {
-      clearPendingUploads();
-      setProgress(0);
-      setStatus(`Guest uploads are limited to ${GUEST_MAX_FILES_PER_BATCH} files. Sign in to upload more.`);
-      window.dispatchEvent(
-        new CustomEvent(SYSTEM_LOG_EVENT, {
-          detail: { message: "Guest upload selection exceeded item limit.", level: "warning" }
-        })
-      );
-      router.push("/auth/signin?source=upload&returnTo=/");
-      return;
-    }
-
-    if (!user && !hasGuestUploadAccess()) {
-      queuePendingUploads(files);
-      setStatus("Redirecting to login. Your selected files are saved.");
-      router.push("/auth/signin?source=upload&returnTo=/");
-      return;
-    }
-
     await performUploadBatch(files);
   }
 
   return (
-    <section id="media-uploader" className="group relative overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-low p-1">
+    <section id="media-uploader" className="dashboard-section-band group relative overflow-hidden border border-outline-variant/15 bg-surface-container-low p-1">
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
 
-      <label className="relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-outline-variant/30 px-6 py-12 text-center transition-all group-hover:border-primary/30">
+      <label className="relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-outline-variant/30 px-6 py-12 text-center transition-all group-hover:border-primary/30">
         <div className="mb-4 rounded-full border border-outline-variant/10 bg-surface-container-high p-5 shadow-xl">
           <ImagePlus className="h-9 w-9 text-primary" />
         </div>
@@ -262,7 +229,7 @@ export function MediaUploader() {
               {uploadedMedia.slice(0, 3).map((entry) => (
                 <li key={entry.id}>
                   <p className="font-semibold">{entry.filename}</p>
-                  {entry.expiresAt ? <p className="text-[10px] text-primary">Expires: {new Date(entry.expiresAt).toLocaleString()}</p> : null}
+                  {entry.expiresAt ? <p className="text-[10px] text-primary">Expires: {formatDateTimeDdMmYyyyHm(entry.expiresAt)}</p> : null}
                 </li>
               ))}
             </ul>

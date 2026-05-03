@@ -9,11 +9,16 @@ import {
   fetchAccountInfo,
   listActiveSessions,
   logoutSession,
+  requestPasswordReset,
+  requestAccountDeletionVerification,
   revokeActiveSession,
   type AccountInfo,
   type ActiveSessionItem
 } from "../../lib/api-client";
 import { getOrCreateGuestPokemonAlias } from "../../lib/guest-alias";
+import { useDominatorActivation } from "../../hooks/use-dominator-activation";
+import { useAuthSession } from "../../hooks/use-auth-session";
+import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
 
 const RETENTION_QUOTES = [
   "Our servers would miss your dramatic tab switching.",
@@ -31,11 +36,11 @@ function validityLabel(account: AccountInfo | null): string {
 
   if (account.accountType === "SUBSCRIPTION") {
     const plan = account.planName || "Plan subscription";
-    const validUntil = account.planValidUntil ? new Date(account.planValidUntil).toLocaleString() : "Unknown";
+    const validUntil = account.planValidUntil ? formatDateTimeDdMmYyyyHm(account.planValidUntil) : "Unknown";
     return `${plan} valid until ${validUntil}`;
   }
 
-  return "Signed-in free account: media validity defaults to 3 months per upload.";
+  return "Signed-in free account media validity follows your current default policy.";
 }
 
 function accountTypeLabel(account: AccountInfo | null, guestAlias: string): string {
@@ -43,7 +48,7 @@ function accountTypeLabel(account: AccountInfo | null, guestAlias: string): stri
     return `Guest (${guestAlias})`;
   }
 
-  return account.accountType === "SUBSCRIPTION" ? "Subscriber (plan-based validity)" : "Free user (3 months)";
+  return account.accountType === "SUBSCRIPTION" ? "Subscriber (plan-based validity)" : "Free user";
 }
 
 function deriveConfirmationPhrase(quote: string): string {
@@ -85,19 +90,25 @@ function formatSessionMeta(session: ActiveSessionItem): string {
 
 export default function AccountPage() {
   const router = useRouter();
-  const [account, setAccount] = useState<AccountInfo | null>(null);
+  const { user } = useAuthSession();
+  useDominatorActivation({ enabled: Boolean(user) });
+  const [guestAlias, setGuestAlias] = useState("Pikachu");
   const [loading, setLoading] = useState(true);
-  const [guestAlias, setGuestAlias] = useState("Guest");
+  const [account, setAccount] = useState<AccountInfo | null>(null);
 
   const [sessions, setSessions] = useState<ActiveSessionItem[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionActionId, setSessionActionId] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState("");
+  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [passwordResetMessage, setPasswordResetMessage] = useState("");
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteQuote, setDeleteQuote] = useState("");
   const [deletePhrase, setDeletePhrase] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteVerificationCode, setDeleteVerificationCode] = useState("");
+  const [deleteVerificationRequested, setDeleteVerificationRequested] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
@@ -121,6 +132,10 @@ export default function AccountPage() {
   }, []);
 
   useEffect(() => {
+    setGuestAlias(getOrCreateGuestPokemonAlias());
+  }, []);
+
+  useEffect(() => {
     async function loadAccount(): Promise<void> {
       const info = await fetchAccountInfo();
       setAccount(info);
@@ -134,35 +149,20 @@ export default function AccountPage() {
     void loadAccount();
   }, [loadSessions]);
 
-  useEffect(() => {
-    if (account) {
-      return;
-    }
-
-    setGuestAlias(getOrCreateGuestPokemonAlias());
-  }, [account]);
-
   const validityText = useMemo(() => validityLabel(account), [account]);
   const typeText = useMemo(() => accountTypeLabel(account, guestAlias), [account, guestAlias]);
   const isGuest = !account;
-  const defaultValidityText = useMemo(() => {
-    if (!account) {
-      return "Guest media default: 10 minutes";
-    }
-
-    return new Date(account.defaultMediaValidityEndsAt).toLocaleString();
-  }, [account]);
 
   const planWindow = useMemo(() => {
     if (!account) {
       return "Uploads live for 10 minutes.";
     }
 
-    if (!account.planValidUntil) {
-      return "No plan expiry available";
+    if (account.planValidUntil) {
+      return formatDateTimeDdMmYyyyHm(account.planValidUntil);
     }
 
-    return new Date(account.planValidUntil).toLocaleString();
+    return formatDateTimeDdMmYyyyHm(account.defaultMediaValidityEndsAt);
   }, [account]);
 
   const deletePhraseMatches = deleteConfirmation.trim().toLowerCase() === deletePhrase.toLowerCase();
@@ -174,8 +174,32 @@ export default function AccountPage() {
     setDeleteQuote(randomQuote);
     setDeletePhrase(phrase);
     setDeleteConfirmation("");
+    setDeleteVerificationCode("");
+    setDeleteVerificationRequested(false);
     setDeleteError("");
     setDeleteModalOpen(true);
+  }
+
+  async function handleRequestDeleteVerification(): Promise<void> {
+    if (!deletePhraseMatches || deletePhrase.length === 0) {
+      return;
+    }
+
+    setDeleteSubmitting(true);
+    setDeleteError("");
+
+    try {
+      await requestAccountDeletionVerification(deleteConfirmation.trim());
+      setDeleteVerificationRequested(true);
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setDeleteError(caughtError.message);
+      } else {
+        setDeleteError("Unable to send deletion verification email.");
+      }
+    } finally {
+      setDeleteSubmitting(false);
+    }
   }
 
   async function handleRevokeSession(sessionId: string): Promise<void> {
@@ -203,7 +227,7 @@ export default function AccountPage() {
   }
 
   async function handlePermanentDelete(): Promise<void> {
-    if (!deletePhraseMatches || deletePhrase.length === 0) {
+    if (!deletePhraseMatches || deletePhrase.length === 0 || deleteVerificationCode.trim().length !== 6) {
       return;
     }
 
@@ -211,7 +235,7 @@ export default function AccountPage() {
     setDeleteError("");
 
     try {
-      await deleteAccountPermanently(deleteConfirmation.trim());
+      await deleteAccountPermanently(deleteConfirmation.trim(), deleteVerificationCode.trim());
       await logoutSession();
       router.push("/auth/signin");
     } catch (caughtError) {
@@ -225,9 +249,31 @@ export default function AccountPage() {
     }
   }
 
+  async function handleRequestPasswordReset(): Promise<void> {
+    if (!account?.email) {
+      return;
+    }
+
+    setPasswordResetLoading(true);
+    setPasswordResetMessage("");
+
+    try {
+      await requestPasswordReset(account.email);
+      setPasswordResetMessage("Password reset link sent to your email.");
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setPasswordResetMessage(caughtError.message);
+      } else {
+        setPasswordResetMessage("Unable to send password reset link.");
+      }
+    } finally {
+      setPasswordResetLoading(false);
+    }
+  }
+
   return (
     <ControlShell searchPlaceholder="Search settings, keys, or logs...">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      <div className="flex w-full flex-col gap-6">
         <section>
           <h2 className="font-headline text-4xl font-extrabold tracking-tight text-on-surface">Account Settings</h2>
           <p className="mt-1 text-sm text-on-surface-variant">Manage architectural preferences and secure your digital assets.</p>
@@ -235,7 +281,7 @@ export default function AccountPage() {
 
         <section className="grid grid-cols-12 gap-4">
           <article className="glass-card col-span-12 rounded-lg border border-outline-variant/15 p-5 lg:col-span-8 md:p-6">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Full Name</p>
                 <p className="font-headline mt-1 text-lg font-bold text-on-surface">{account?.name || guestAlias}</p>
@@ -248,11 +294,25 @@ export default function AccountPage() {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Role</p>
                 <p className="font-headline mt-1 text-lg font-bold text-on-surface">{account?.role ?? "Pokemon"}</p>
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Default Validity Ends</p>
-                <p className="mt-1 text-sm text-on-surface">{defaultValidityText}</p>
-              </div>
             </div>
+
+            {!isGuest ? (
+              <div className="mt-5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Change Password</p>
+                <p className="mt-2 text-sm text-on-surface-variant">A reset link will be sent to your registered email. You can set a new password from that link.</p>
+                <button
+                  type="button"
+                  disabled={passwordResetLoading}
+                  onClick={() => {
+                    void handleRequestPasswordReset();
+                  }}
+                  className="mt-3 inline-flex h-10 items-center justify-center rounded-lg border border-outline-variant/30 px-4 text-xs font-bold uppercase tracking-wider text-on-surface transition hover:border-primary/50 hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {passwordResetLoading ? "Sending..." : "Send password reset link"}
+                </button>
+                {passwordResetMessage ? <p className="mt-2 text-xs text-on-surface-variant">{passwordResetMessage}</p> : null}
+              </div>
+            ) : null}
           </article>
 
           <article className="glass-card col-span-12 rounded-lg border border-outline-variant/15 p-5 lg:col-span-4 md:p-6">
@@ -309,7 +369,7 @@ export default function AccountPage() {
                             </p>
                             <p className="text-xs text-on-surface-variant">{formatSessionMeta(session)}</p>
                             <p className="mt-1 text-[11px] text-on-surface-variant">
-                              Last active: {new Date(session.lastActivityAt).toLocaleString()} • Expires: {new Date(session.expiresAt).toLocaleString()}
+                              Last active: {formatDateTimeDdMmYyyyHm(session.lastActivityAt)} • Expires: {formatDateTimeDdMmYyyyHm(session.expiresAt)}
                             </p>
                             {session.ipAddress ? <p className="text-[11px] text-on-surface-variant">IP: {session.ipAddress}</p> : null}
                           </div>
@@ -340,10 +400,9 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={openDeleteModal}
-                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-error/50 py-3 text-sm font-bold uppercase tracking-widest text-error transition hover:bg-error hover:text-on-error"
+                className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-lg border border-error/50 px-4 text-center text-sm font-bold uppercase tracking-widest leading-none text-error transition hover:bg-error hover:text-on-error"
               >
                 Delete Account Permanently
-                <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </button>
             </article>
           ) : null}
@@ -378,6 +437,20 @@ export default function AccountPage() {
               className="mt-4 h-11 w-full rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-0"
             />
 
+            {deleteVerificationRequested ? (
+              <input
+                type="text"
+                value={deleteVerificationCode}
+                onChange={(event) => {
+                  const normalized = event.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+                  setDeleteVerificationCode(normalized);
+                }}
+                placeholder="Enter 6-digit email verification code"
+                maxLength={6}
+                className="mt-3 h-11 w-full rounded-lg border border-outline-variant/20 bg-surface-container-high px-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-0"
+              />
+            ) : null}
+
             {deleteError ? <p className="mt-3 text-xs text-error">{deleteError}</p> : null}
 
             <div className="mt-5 flex items-center justify-end gap-2">
@@ -398,11 +471,16 @@ export default function AccountPage() {
                 type="button"
                 disabled={!deletePhraseMatches || deleteSubmitting}
                 onClick={() => {
-                  void handlePermanentDelete();
+                  if (deleteVerificationRequested) {
+                    void handlePermanentDelete();
+                    return;
+                  }
+
+                  void handleRequestDeleteVerification();
                 }}
                 className="rounded-lg border border-error/50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-error transition hover:bg-error hover:text-on-error disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {deleteSubmitting ? "Deleting..." : "Delete permanently"}
+                {deleteSubmitting ? "Processing..." : deleteVerificationRequested ? "Delete permanently" : "Send verification code"}
               </button>
             </div>
           </div>

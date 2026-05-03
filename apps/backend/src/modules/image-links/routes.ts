@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import { ensureGuestSession } from "../../middlewares/guest-session.js";
 import { requireAuth } from "../../middlewares/auth.js";
 import { enforceMediaAccess } from "../../middlewares/access-control.js";
@@ -10,6 +11,19 @@ import { ImageLinkService } from "./service.js";
 
 const service = new ImageLinkService(new ImageLinkRepository(), new MediaRepository());
 const storage = new LocalStorageProvider();
+
+const mediaIdParamSchema = z.object({
+  mediaId: z.string().uuid()
+});
+
+const imageIdParamSchema = z.object({
+  imageId: z.string().uuid()
+});
+
+const publicImageParamSchema = z.object({
+  imageId: z.string().uuid(),
+  ext: z.string().min(1).max(12).regex(/^[A-Za-z0-9]+$/)
+});
 
 type Actor =
   | { kind: "user"; userId: string; role: "ADMIN" | "USER" }
@@ -60,58 +74,122 @@ async function resolveActor(
 }
 
 export async function registerImageRoutes(app: FastifyInstance): Promise<void> {
-  app.post("/images/:mediaId/link", { preHandler: [ensureGuestSession] }, async (request, reply) => {
-    const mediaId = (request.params as { mediaId: string }).mediaId;
-    const media = await new MediaRepository().findById(mediaId);
+  app.post(
+    "/images/:mediaId/link",
+    {
+      preHandler: [ensureGuestSession],
+      config: {
+        rateLimit: {
+          max: 12,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const paramsResult = mediaIdParamSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({ error: "Invalid media id" });
+      }
 
-    if (!media) {
-      return reply.status(404).send({ error: "Media not found" });
+      const mediaId = paramsResult.data.mediaId;
+      const media = await new MediaRepository().findById(mediaId);
+
+      if (!media) {
+        return reply.status(404).send({ error: "Media not found" });
+      }
+
+      const actor = await resolveActor(app, request);
+      const allowed =
+        actor.kind === "user"
+          ? actor.role === "ADMIN" || media.userId === actor.userId
+          : media.ownerType === "GUEST" &&
+            media.guestSessionId === actor.guestSessionId &&
+            Boolean(media.expiresAt) &&
+            media.expiresAt!.getTime() >= actor.requestStartMs;
+
+      if (!allowed) {
+        return reply.status(403).send({ error: "Image link creation not allowed" });
+      }
+
+      await enforceMediaAccess(media.id, "view");
+      const result = await service.create(mediaId);
+      return reply.status(201).send(result);
     }
+  );
 
-    const actor = await resolveActor(app, request);
-    const allowed =
-      actor.kind === "user"
-        ? actor.role === "ADMIN" || media.userId === actor.userId
-        : media.ownerType === "GUEST" &&
-          media.guestSessionId === actor.guestSessionId &&
-          Boolean(media.expiresAt) &&
-          media.expiresAt!.getTime() >= actor.requestStartMs;
+  app.post(
+    "/images/:imageId/renew",
+    {
+      preHandler: [requireAuth],
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const paramsResult = imageIdParamSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({ error: "Invalid image id" });
+      }
 
-    if (!allowed) {
-      return reply.status(403).send({ error: "Image link creation not allowed" });
+      const imageId = paramsResult.data.imageId;
+      const imageLink = await new ImageLinkRepository().findById(imageId);
+      if (!imageLink) {
+        return reply.status(404).send({ error: "Image link not found" });
+      }
+
+      const media = await new MediaRepository().findById(imageLink.mediaFileId);
+      if (!media) {
+        return reply.status(404).send({ error: "Media not found" });
+      }
+
+      if (request.user.role !== "ADMIN" && media.userId !== request.user.sub) {
+        return reply.status(403).send({ error: "Image link renewal not allowed" });
+      }
+
+      const renewed = await service.renew(imageId);
+      return reply.send({ imageLink: renewed });
     }
+  );
 
-    await enforceMediaAccess(media.id, "view");
-    const result = await service.create(mediaId);
-    return reply.status(201).send(result);
-  });
+  app.get(
+    "/i/:imageId.:ext",
+    {
+      config: {
+        rateLimit: {
+          max: 120,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const paramsResult = publicImageParamSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({ error: "Invalid image link" });
+      }
 
-  app.post("/images/:imageId/renew", { preHandler: [requireAuth] }, async (request, reply) => {
-    const imageId = (request.params as { imageId: string }).imageId;
-    const renewed = await service.renew(imageId);
-    return reply.send({ imageLink: renewed });
-  });
+      const { imageId, ext } = paramsResult.data;
+      const imageLink = await new ImageLinkRepository().findById(imageId);
 
-  app.get("/i/:imageId.:ext", async (request, reply) => {
-    const { imageId, ext } = request.params as { imageId: string; ext: string };
-    const imageLink = await new ImageLinkRepository().findById(imageId);
+      if (!imageLink || imageLink.extension !== ext) {
+        return reply.status(404).send({ error: "Image link not found" });
+      }
 
-    if (!imageLink || imageLink.extension !== ext) {
-      return reply.status(404).send({ error: "Image link not found" });
+      if (imageLink.expiresAt.getTime() < Date.now()) {
+        return reply.status(410).send({ error: "Image link expired" });
+      }
+
+      const media = await new MediaRepository().findById(imageLink.mediaFileId);
+      if (!media) {
+        return reply.status(404).send({ error: "Media not found" });
+      }
+
+      const stream = await storage.get(media.storagePath);
+      reply.header("Content-Type", media.mimeType);
+      reply.header("Cache-Control", "public, max-age=86400");
+      return reply.send(stream);
     }
-
-    if (imageLink.expiresAt.getTime() < Date.now()) {
-      return reply.status(410).send({ error: "Image link expired" });
-    }
-
-    const media = await new MediaRepository().findById(imageLink.mediaFileId);
-    if (!media) {
-      return reply.status(404).send({ error: "Media not found" });
-    }
-
-    const stream = await storage.get(media.storagePath);
-    reply.header("Content-Type", media.mimeType);
-    reply.header("Cache-Control", "public, max-age=86400");
-    return reply.send(stream);
-  });
+  );
 }

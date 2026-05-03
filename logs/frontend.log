@@ -4,529 +4,686 @@
 
    ▲ Next.js 15.5.15
    - Local:        http://localhost:3000
-   - Network:      http://10.50.192.42:3000
+   - Network:      http://10.94.166.42:3000
    - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 2.6s
- ○ Compiling / ...
- ✓ Compiled /_not-found in 6.3s (1502 modules)
- GET / 200 in 6973ms
- GET /api/activity?limit=20 404 in 3441ms
- GET /api/activity?limit=20 404 in 40ms
- GET /api/activity?limit=20 404 in 40ms
- GET /api/activity?limit=20 404 in 49ms
- GET /api/activity?limit=20 404 in 60ms
- GET /api/activity?limit=20 404 in 32ms
- GET /api/activity?limit=20 404 in 50ms
- GET /api/activity?limit=20 404 in 38ms
- GET /api/activity?limit=20 404 in 42ms
- GET /api/activity?limit=20 404 in 38ms
- GET /api/activity?limit=20 404 in 32ms
- GET /api/activity?limit=20 404 in 43ms
- GET /api/activity?limit=20 404 in 59ms
- GET / 200 in 138ms
- GET /api/media 404 in 223ms
- GET /api/media 404 in 234ms
- GET /api/activity?limit=20 404 in 225ms
- GET /api/media 404 in 225ms
- GET /api/batches 404 in 224ms
- GET /api/batches 404 in 237ms
- GET /api/activity?limit=20 404 in 95ms
- GET /api/media 404 in 99ms
-[Error: Failed to find Server Action. This request might be from an older or newer deployment.
-Read more: https://nextjs.org/docs/messages/failed-to-find-server-action]
- POST /api/media/upload 404 in 406ms
- GET / 200 in 55ms
- GET /api/media 404 in 279ms
- GET /api/activity?limit=20 404 in 268ms
- GET /api/media 404 in 277ms
- GET /api/batches 404 in 283ms
- GET /api/batches 404 in 273ms
- GET /api/media 404 in 281ms
- GET /api/media 404 in 95ms
- GET /api/activity?limit=20 404 in 95ms
- GET /api/activity?limit=20 404 in 26ms
- GET /api/activity?limit=20 404 in 35ms
- GET /api/activity?limit=20 404 in 47ms
- GET /api/activity?limit=20 404 in 47ms
- GET /api/activity?limit=20 404 in 27ms
- GET /api/activity?limit=20 404 in 42ms
- GET /api/activity?limit=20 404 in 37ms
- GET /api/activity?limit=20 404 in 29ms
- GET /api/activity?limit=20 404 in 32ms
- ✓ Compiled in 2.9s (1516 modules)
- GET / 200 in 152ms
- GET / 200 in 466ms
- GET / 200 in 75ms
- GET / 200 in 89ms
- GET / 200 in 57ms
- GET / 200 in 84ms
- ⚠ Cross origin request detected from 10.50.192.42 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
-Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
- ✓ Compiled in 821ms (1511 modules)
- ✓ Compiled in 497ms (1511 modules)
- ✓ Compiled in 591ms (1511 modules)
- ✓ Compiled in 581ms (1511 modules)
- GET / 200 in 544ms
- GET / 200 in 88ms
- GET / 200 in 92ms
- GET / 200 in 120ms
- GET / 200 in 110ms
- GET / 200 in 82ms
- GET / 200 in 89ms
- ✓ Compiled in 1026ms (1511 modules)
- GET / 200 in 186ms
- GET / 200 in 472ms
- GET / 200 in 50ms
- ○ Compiling /_not-found ...
- ✓ Compiled /_not-found in 988ms (1502 modules)
- GET /api/media 404 in 1395ms
- GET /api/activity?limit=20 404 in 1387ms
- GET /api/batches 404 in 1390ms
- GET / 200 in 392ms
- GET /api/batches 404 in 109ms
- GET /api/activity?limit=20 404 in 111ms
- GET /api/media 404 in 114ms
- GET /api/media 404 in 50ms
- GET /api/media 404 in 36ms
- GET / 200 in 517ms
- GET /api/batches 404 in 121ms
- GET /api/activity?limit=20 404 in 120ms
- GET /api/media 404 in 125ms
- GET /api/media 404 in 105ms
- GET /api/activity?limit=20 404 in 108ms
- GET /api/batches 404 in 112ms
- GET /api/media 404 in 55ms
- GET /api/media 404 in 50ms
- GET /api/activity?limit=20 404 in 61ms
- GET /api/activity?limit=20 404 in 46ms
- GET /api/activity?limit=20 404 in 121ms
- GET /api/activity?limit=20 404 in 127ms
- GET /api/activity?limit=20 404 in 57ms
- GET /api/activity?limit=20 404 in 38ms
- GET /api/activity?limit=20 404 in 51ms
-
-
-Retrying 1/3...
- ✓ Compiled in 3.8s (1541 modules)
- GET / 200 in 653ms
- ✓ Compiled in 671ms (719 modules)
- GET / 200 in 49ms
- ✓ Compiled in 830ms (1514 modules)
- GET / 200 in 166ms
- ✓ Compiled in 903ms (1514 modules)
- GET / 200 in 145ms
- ✓ Compiled in 935ms (1514 modules)
- GET / 200 in 132ms
- ✓ Compiled in 952ms (1514 modules)
- GET / 200 in 139ms
- GET / 200 in 662ms
- ✓ Compiled in 538ms (1514 modules)
- GET / 200 in 139ms
- GET / 200 in 76ms
- GET / 200 in 421ms
- ○ Compiling /_not-found ...
- ✓ Compiled /_not-found in 703ms (1505 modules)
- GET /api/activity?limit=20 404 in 954ms
- GET / 200 in 71ms
- GET / 200 in 73ms
- GET /api/activity?limit=20 404 in 75ms
- GET /api/activity?limit=20 404 in 78ms
- GET /api/activity?limit=20 404 in 48ms
- ✓ Compiled in 455ms (1519 modules)
- GET / 200 in 218ms
- GET / 200 in 381ms
- GET / 200 in 92ms
- GET / 200 in 67ms
- ✓ Compiled in 1074ms (1514 modules)
- GET / 200 in 232ms
- GET / 200 in 213ms
- GET / 200 in 391ms
- GET / 200 in 112ms
- GET / 200 in 198ms
- GET / 200 in 76ms
- ○ Compiling /notifications ...
- ✓ Compiled /notifications in 1866ms (1510 modules)
- GET /notifications 200 in 2118ms
- ○ Compiling /library ...
- ✓ Compiled /library in 791ms (1518 modules)
- GET /library 200 in 958ms
+ ✓ Ready in 12.1s
+ ○ Compiling /share/[token] ...
+ ✓ Compiled /share/[token] in 2.9s (641 modules)
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 3809ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 124ms
+ ✓ Compiled in 1025ms (641 modules)
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 213ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 226ms
+ ✓ Compiled in 1012ms (641 modules)
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 226ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 210ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 102ms
  ○ Compiling /batches ...
- ✓ Compiled /batches in 573ms (1526 modules)
- GET /batches 200 in 699ms
- GET / 200 in 37ms
- ✓ Compiled in 813ms (1540 modules)
- GET /batches 200 in 491ms
- GET / 200 in 484ms
- GET / 200 in 455ms
- ✓ Compiled in 1168ms (1540 modules)
- GET / 200 in 223ms
- GET / 200 in 230ms
- GET /batches 200 in 230ms
- ✓ Compiled in 1015ms (1540 modules)
- GET /batches 200 in 252ms
- GET / 200 in 246ms
- GET / 200 in 255ms
- ✓ Compiled in 1115ms (1540 modules)
- GET / 200 in 220ms
- GET / 200 in 229ms
- GET /batches 200 in 234ms
- GET / 200 in 605ms
- ✓ Compiled in 1338ms (1540 modules)
- GET /batches 200 in 457ms
- GET / 200 in 460ms
- GET / 200 in 462ms
- ✓ Compiled in 869ms (1540 modules)
- GET / 200 in 344ms
- GET / 200 in 356ms
- GET /batches 200 in 363ms
- GET / 200 in 392ms
- ✓ Compiled in 1637ms (1540 modules)
- GET /batches 200 in 343ms
- GET / 200 in 338ms
- GET / 200 in 332ms
- ✓ Compiled in 562ms (1540 modules)
- GET /batches 200 in 203ms
- GET / 200 in 198ms
- GET / 200 in 191ms
- ✓ Compiled in 1186ms (1540 modules)
- GET / 200 in 335ms
- GET / 200 in 334ms
- GET /batches 200 in 336ms
- ✓ Compiled in 475ms (1540 modules)
- GET /batches 200 in 289ms
- GET / 200 in 287ms
- GET / 200 in 287ms
- GET / 200 in 406ms
- GET / 200 in 63ms
- GET / 200 in 82ms
- GET / 200 in 129ms
- ✓ Compiled in 2.7s (1540 modules)
- GET / 200 in 363ms
- GET / 200 in 374ms
- GET /batches 200 in 374ms
- GET / 200 in 500ms
- GET / 200 in 87ms
- GET / 200 in 60ms
- GET / 200 in 157ms
- ✓ Compiled in 2.1s (1540 modules)
- GET /batches 200 in 219ms
- GET / 200 in 215ms
- GET / 200 in 211ms
- GET / 200 in 244ms
- GET / 200 in 66ms
- GET / 200 in 43ms
- GET / 200 in 110ms
- ✓ Compiled in 1683ms (1540 modules)
- GET /batches 200 in 384ms
- GET / 200 in 375ms
- GET / 200 in 674ms
- ✓ Compiled in 1670ms (1540 modules)
- GET /batches 200 in 539ms
- GET / 200 in 534ms
- GET / 200 in 528ms
- GET / 200 in 156ms
- ✓ Compiled in 2.1s (1540 modules)
- GET /batches 200 in 182ms
- GET / 200 in 180ms
- GET / 200 in 181ms
- ✓ Compiled in 688ms (1540 modules)
- GET /batches 200 in 98ms
- GET / 200 in 97ms
- ⨯ ./src/features/dashboard/landing-typed-headline.tsx
-Error:   [31mx[0m Expression expected
-    ,-[[36;1;4m/home/phoenix/LinkForge/apps/frontend/src/features/dashboard/landing-typed-headline.tsx[0m:11:1]
- [2m 8[0m | }
- [2m 9[0m | 
- [2m10[0m | const TYPED_HEADLINE = "Upload once.\nShare instantly.";
- [2m11[0m | const TYPING_INTERVAL_MS = ;
-    : [35;1m                           ^[0m
- [2m12[0m | const LOOP_PAUSE_MS = 1700;
- [2m13[0m | 
- [2m14[0m | export function LandingTypedHeadline({ className, start = true }: LandingTypedHeadlineProps) {
-    `----
-
-Caused by:
-    Syntax Error
+ ✓ Compiled /batches in 1462ms (655 modules)
+ GET /batches 200 in 1589ms
+ GET /batches 200 in 134ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 142ms
+ ✓ Compiled in 759ms (669 modules)
+ GET /batches 200 in 347ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 346ms
+ ✓ Compiled in 851ms (669 modules)
+ GET /batches 200 in 185ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 175ms
+ ○ Compiling / ...
+ ✓ Compiled / in 3.1s (1523 modules)
+ GET / 200 in 3392ms
+ GET / 200 in 53ms
+ ✓ Compiled in 1252ms (1537 modules)
+ GET / 200 in 365ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 362ms
+ ✓ Compiled in 997ms (1537 modules)
+ GET / 200 in 290ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 293ms
+ ✓ Compiled in 2.8s (1537 modules)
+ GET / 200 in 590ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 575ms
+ ⨯ ./src/features/media/media-manager.tsx
+Error:   [31mx[0m The "use client" directive must be placed before other expressions. Move it to the top of the file to resolve this issue.
+   ,-[[36;1;4m/home/phoenix/LinkForge/apps/frontend/src/features/media/media-manager.tsx[0m:3:1]
+ [2m1[0m |     const previewViewLimit = !batchAllowDownload ? Math.max(1, Math.min(5, Number(batchPreviewViewLimit) || 3)) : undefined;
+ [2m2[0m | 
+ [2m3[0m | "use client";
+   : [35;1m^^^^^^^^^^^^^[0m
+ [2m4[0m | 
+ [2m5[0m | import { useEffect, useRef, useState } from "react";
+ [2m6[0m | import { RefreshCw, Power, Trash2, Link2, Copy, Eye } from "lucide-react";
+   `----
 
 Import trace for requested module:
-./src/features/dashboard/landing-typed-headline.tsx
-./src/features/dashboard/public-landing.tsx
+./src/features/media/media-manager.tsx
 ./src/app/home-client.tsx
- ✓ Compiled in 384ms (1540 modules)
- GET / 200 in 95ms
- GET /batches 200 in 96ms
- ✓ Compiled in 261ms (1540 modules)
- GET / 200 in 56ms
- GET /batches 200 in 56ms
- ✓ Compiled in 1668ms (1562 modules)
- GET /batches 200 in 237ms
- GET / 200 in 237ms
- GET / 200 in 491ms
- GET / 200 in 80ms
- GET / 200 in 93ms
- ✓ Compiled in 1338ms (1540 modules)
- GET /batches 200 in 300ms
- GET / 200 in 306ms
- GET / 200 in 301ms
- GET / 200 in 144ms
- GET / 200 in 386ms
- ✓ Compiled in 1099ms (1540 modules)
- GET /batches 200 in 397ms
- GET / 200 in 392ms
- GET / 200 in 397ms
- ✓ Compiled in 994ms (1540 modules)
- GET / 200 in 1194ms
- GET / 200 in 159ms
- GET /batches 200 in 163ms
- GET / 200 in 129ms
- GET / 200 in 250ms
- ✓ Compiled in 4.3s (1540 modules)
- ✓ Compiled in 1ms (836 modules)
- ✓ Compiled in 1ms (836 modules)
- ✓ Compiled in 0ms (836 modules)
- GET / 200 in 1858ms
- GET / 200 in 2991ms
- GET /batches 200 in 2574ms
- GET / 200 in 56ms
- GET / 200 in 283ms
- GET / 200 in 122ms
- ○ Compiling /_not-found ...
- ✓ Compiled /_not-found in 995ms (1531 modules)
- GET /api/media 404 in 1374ms
- GET /api/batches 404 in 1374ms
- GET /api/activity?limit=20 404 in 1392ms
- GET / 200 in 387ms
- GET / 200 in 388ms
- GET / 200 in 390ms
- GET /api/batches 404 in 161ms
- GET / 200 in 175ms
- GET /api/media 404 in 166ms
- GET /api/activity?limit=20 404 in 108ms
- GET /api/media 404 in 107ms
- GET /api/media 404 in 52ms
- GET / 200 in 344ms
- GET /api/media 404 in 181ms
- GET /api/batches 404 in 182ms
- GET /api/activity?limit=20 404 in 182ms
- GET /api/media 404 in 203ms
- GET /api/batches 404 in 247ms
- GET /api/activity?limit=20 404 in 246ms
- GET /api/media 404 in 123ms
- GET /api/media 404 in 59ms
- ✓ Compiled in 1691ms (1545 modules)
- GET / 200 in 282ms
- GET / 200 in 288ms
- GET / 200 in 289ms
- GET / 200 in 284ms
- GET /api/activity?limit=20 404 in 94ms
-[Error: Failed to find Server Action. This request might be from an older or newer deployment.
-Read more: https://nextjs.org/docs/messages/failed-to-find-server-action]
- POST /api/media/upload 404 in 241ms
- GET /api/activity?limit=20 404 in 51ms
- GET / 200 in 687ms
- GET / 200 in 87ms
- GET / 200 in 82ms
- GET / 200 in 148ms
- GET /api/batches 404 in 178ms
- GET /api/activity?limit=20 404 in 178ms
- GET /api/media 404 in 183ms
- GET /api/media 404 in 105ms
- GET /api/batches 404 in 102ms
- GET /api/activity?limit=20 404 in 101ms
- GET /api/media 404 in 30ms
- GET /api/media 404 in 32ms
- GET / 200 in 152ms
- GET /api/activity?limit=20 404 in 101ms
- GET /api/media 404 in 104ms
- GET /api/batches 404 in 104ms
- GET /api/activity?limit=20 404 in 139ms
- GET /api/media 404 in 146ms
- GET /api/batches 404 in 144ms
- GET /api/media 404 in 52ms
- GET /api/media 404 in 70ms
- GET /api/activity?limit=20 404 in 44ms
- GET /api/activity?limit=20 404 in 43ms
- GET /api/activity?limit=20 404 in 40ms
- GET /api/activity?limit=20 404 in 113ms
- GET /api/activity?limit=20 404 in 82ms
- GET /api/activity?limit=20 404 in 87ms
- GET /api/activity?limit=20 404 in 83ms
- GET /api/activity?limit=20 404 in 102ms
- GET / 200 in 1538ms
- GET /api/activity?limit=20 404 in 167ms
- ✓ Compiled in 10.8s (1540 modules)
- GET / 200 in 1332ms
- GET / 200 in 901ms
- GET / 200 in 199ms
- ✓ Compiled in 3.1s (1540 modules)
- GET / 200 in 440ms
- GET / 200 in 444ms
- GET / 200 in 434ms
- ✓ Compiled in 1994ms (1540 modules)
- GET / 200 in 363ms
- GET / 200 in 376ms
- GET / 200 in 353ms
- ✓ Compiled in 1648ms (1540 modules)
- GET / 200 in 521ms
- GET / 200 in 515ms
- GET / 200 in 508ms
- GET / 200 in 1541ms
- ○ Compiling /_not-found ...
- GET / 200 in 5713ms
- ✓ Compiled /_not-found in 10.9s (1531 modules)
- GET / 200 in 804ms
- GET / 200 in 175ms
- GET /api/media 404 in 443ms
- GET /api/batches 404 in 443ms
- GET /api/activity?limit=20 404 in 445ms
- GET /api/batches 404 in 318ms
- GET /api/media 404 in 323ms
- GET /api/activity?limit=20 404 in 317ms
- GET /api/media 404 in 66ms
- GET /api/media 404 in 72ms
- GET / 200 in 1440ms
- GET / 200 in 94ms
- GET /api/media 404 in 249ms
- GET /api/batches 404 in 247ms
- GET /api/activity?limit=20 404 in 246ms
- GET /api/batches 404 in 163ms
- GET /api/activity?limit=20 404 in 163ms
- GET /api/media 404 in 169ms
- GET /api/media 404 in 59ms
- GET /api/media 404 in 68ms
- GET /api/activity?limit=20 404 in 83ms
- GET /api/activity?limit=20 404 in 1118ms
- GET / 200 in 278ms
- GET /api/activity?limit=20 404 in 433ms
- GET /api/media 404 in 441ms
- GET /api/batches 404 in 481ms
- GET /api/media 404 in 457ms
- GET /api/batches 404 in 456ms
- GET /api/media 404 in 215ms
- GET /api/activity?limit=20 404 in 223ms
- GET /api/media 404 in 89ms
- GET / 200 in 432ms
- GET /api/activity?limit=20 404 in 185ms
- GET /api/activity?limit=20 404 in 232ms
- GET /api/activity?limit=20 404 in 65ms
- GET /api/activity?limit=20 404 in 183ms
- GET /api/activity?limit=20 404 in 114ms
- GET /api/activity?limit=20 404 in 98ms
- GET /api/activity?limit=20 404 in 93ms
- ✓ Compiled in 11.3s (1540 modules)
- GET / 200 in 297ms
- GET / 200 in 56ms
- ✓ Compiled in 3.6s (1540 modules)
- GET / 200 in 479ms
- GET / 200 in 478ms
- ✓ Compiled in 2.5s (1540 modules)
- GET / 200 in 395ms
- GET / 200 in 80ms
- ✓ Compiled in 1699ms (1540 modules)
- GET / 200 in 349ms
- GET / 200 in 350ms
- ✓ Compiled in 949ms (1540 modules)
- GET / 200 in 299ms
- GET / 200 in 303ms
- GET / 200 in 3310ms
- ○ Compiling /_not-found ...
- GET / 200 in 4086ms
- ✓ Compiled /_not-found in 9.4s (1531 modules)
- GET / 200 in 838ms
- GET / 200 in 158ms
- GET / 200 in 183ms
- ✓ Compiled in 4.4s (1540 modules)
- GET / 200 in 265ms
- GET / 200 in 42ms
- ✓ Compiled in 4.2s (1540 modules)
- GET / 200 in 306ms
- GET / 200 in 87ms
- GET / 200 in 2498ms
- GET / 200 in 1157ms
- GET /notifications 200 in 65ms
- GET /library 200 in 71ms
+ ✓ Compiled in 2.5s (1537 modules)
+ GET / 200 in 484ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 483ms
+ ✓ Compiled in 2.5s (1537 modules)
+ GET / 200 in 356ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 349ms
+ ✓ Compiled in 2.5s (1537 modules)
+ GET / 200 in 547ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 509ms
+ ✓ Compiled in 2.1s (1537 modules)
+ GET / 200 in 510ms
+ GET /share/0adba34f7d064111937be0bffc4d01d7 200 in 499ms
+ GET / 200 in 405ms
+ GET /batches 200 in 37ms
+ GET / 200 in 27ms
+ ✓ Compiled in 2.7s (1537 modules)
+ GET / 200 in 252ms
+ GET / 200 in 1076ms
+ GET /share/1c044aeaf3274706b94d09f4ab2ce14d 200 in 221ms
+ GET /share/1c044aeaf3274706b94d09f4ab2ce14d 200 in 96ms
+ ✓ Compiled in 2.6s (1537 modules)
+ GET / 200 in 235ms
+ GET / 200 in 266ms
+ GET /share/2f6330ec2a7d4f5c99bf50968f510e70 200 in 179ms
+ GET /share/2f6330ec2a7d4f5c99bf50968f510e70 200 in 106ms
+ GET /share/78bef147193440ed8b4969abb5cfbfdb 200 in 126ms
+ GET /share/78bef147193440ed8b4969abb5cfbfdb 200 in 129ms
+ GET /batches 200 in 89ms
  ○ Compiling /account ...
- ✓ Compiled /account in 4s (1534 modules)
- GET /account 200 in 4280ms
- GET /account 200 in 53ms
- GET / 200 in 79ms
- GET / 200 in 874ms
- GET / 200 in 47ms
- ✓ Compiled in 7.7s (1548 modules)
- GET / 200 in 268ms
- GET / 200 in 52ms
- GET / 200 in 927ms
- ✓ Compiled in 7.5s (1548 modules)
- GET / 200 in 316ms
- GET / 200 in 98ms
- ✓ Compiled in 3.2s (1548 modules)
- GET / 200 in 304ms
- GET / 200 in 314ms
- ✓ Compiled in 5s (1548 modules)
- GET / 200 in 215ms
+ ✓ Compiled /account in 1022ms (1531 modules)
+ GET /account 200 in 1143ms
+ ✓ Compiled in 1263ms (1545 modules)
+ GET /account 200 in 209ms
+ ✓ Compiled in 1231ms (1545 modules)
+ GET /account 200 in 125ms
+ ✓ Compiled in 555ms (1545 modules)
+ GET /account 200 in 58ms
+ GET /account 200 in 186ms
+ ✓ Compiled in 1217ms (1545 modules)
+ GET /account 200 in 95ms
+ ✓ Compiled in 498ms (1545 modules)
+ GET /account 200 in 112ms
+ ✓ Compiled in 447ms (1545 modules)
+ GET /account 200 in 51ms
+ ✓ Compiled in 1010ms (1545 modules)
+ GET /account 200 in 62ms
+ ✓ Compiled in 975ms (1545 modules)
+ GET /account 200 in 82ms
+ ✓ Compiled in 1435ms (1545 modules)
+ GET /account 200 in 148ms
+ ✓ Compiled in 321ms (707 modules)
+ GET /account 200 in 41ms
+ ✓ Compiled in 1197ms (1547 modules)
+ GET /account 200 in 59ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 906ms (1547 modules)
+ ⨯ ReferenceError: useAuthSession is not defined
+    at AccountPage (src/app/account/account-client.tsx:91:20)
+  89 | export default function AccountPage() {
+  90 |   const router = useRouter();
+> 91 |   const { user } = useAuthSession();
+     |                    ^
+  92 |   useDominatorActivation({ enabled: Boolean(user) });
+  93 |   const guestAlias = useMemo(() => getOrCreateGuestPokemonAlias(), []);
+  94 |   const [loading, setLoading] = useState(true); {
+  digest: '3880921459'
+}
+ GET /account 200 in 662ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 435ms (1547 modules)
+ GET /account 200 in 378ms
+ GET /account 200 in 171ms
+ ✓ Compiled in 717ms (1533 modules)
+ GET /account 200 in 42ms
+ ✓ Compiled in 552ms (708 modules)
+ GET /account 200 in 102ms
+ GET /account 200 in 164ms
+ GET /account 200 in 84ms
+ ○ Compiling /auth/signin ...
+ ✓ Compiled /auth/signin in 1386ms (1547 modules)
+ GET /auth/signin 200 in 1595ms
+ ○ Compiling /auth/callback ...
+ ✓ Compiled /auth/callback in 548ms (1555 modules)
+ GET /auth/callback 200 in 702ms
+ GET / 200 in 43ms
+ GET /account 200 in 71ms
+ GET /account 200 in 122ms
+ ✓ Compiled in 2.3s (1563 modules)
+ GET /account 200 in 181ms
+ GET /account 200 in 159ms
+ ✓ Compiled in 1825ms (1563 modules)
+ GET /account 200 in 88ms
+ GET /account 200 in 155ms
+ GET / 200 in 252ms
+ GET /account 200 in 109ms
+ GET / 200 in 70ms
+ GET /auth/signin 200 in 51ms
+ ✓ Compiled /auth/callback in 375ms (854 modules)
+ GET /auth/callback 200 in 568ms
+ GET / 200 in 35ms
+ GET /account 200 in 71ms
+ ○ Compiling /dominator ...
+ ✓ Compiled /dominator in 1317ms (1576 modules)
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiJkMzUyN2I5OTBlYjU3YmE1YWFmNmU4MzlkMmViYTY5MCIsImlhdCI6MTc3NzgwMjIwOCwiZXhwIjoxNzc3ODAyMjM4fQ.A9qnHJOUxDtGOFdcxm9iHEr81d9c1EQNEc_NDV72wZ4 200 in 1527ms
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiJkMzUyN2I5OTBlYjU3YmE1YWFmNmU4MzlkMmViYTY5MCIsImlhdCI6MTc3NzgwMjIwOCwiZXhwIjoxNzc3ODAyMjM4fQ.A9qnHJOUxDtGOFdcxm9iHEr81d9c1EQNEc_NDV72wZ4 200 in 209ms
  GET / 200 in 271ms
- ✓ Compiled in 3.2s (1548 modules)
- GET / 200 in 162ms
- GET / 200 in 159ms
- GET / 200 in 2037ms
- GET / 200 in 147ms
- GET / 200 in 851ms
- ✓ Compiled in 8.2s (1548 modules)
- GET / 200 in 411ms
- GET / 200 in 55ms
- ✓ Compiled in 1515ms (1548 modules)
- GET / 200 in 182ms
- GET / 200 in 187ms
- ✓ Compiled in 7.1s (1548 modules)
- GET / 200 in 227ms
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiJkMzUyN2I5OTBlYjU3YmE1YWFmNmU4MzlkMmViYTY5MCIsImlhdCI6MTc3NzgwMjIwOCwiZXhwIjoxNzc3ODAyMjM4fQ.A9qnHJOUxDtGOFdcxm9iHEr81d9c1EQNEc_NDV72wZ4 200 in 69ms
+ GET / 200 in 114ms
+ GET / 200 in 90ms
+ GET /auth/signin 200 in 65ms
  GET / 200 in 42ms
- GET / 200 in 1612ms
- ✓ Compiled in 2s (1548 modules)
- GET / 200 in 169ms
- GET / 200 in 169ms
- GET /notifications 200 in 30ms
- GET /library 200 in 34ms
- GET /batches 200 in 25ms
- GET / 200 in 15ms
- GET /notifications 200 in 18ms
- GET /library 200 in 16ms
- GET /batches 200 in 20ms
- GET /account 200 in 26ms
- GET / 200 in 15ms
- ✓ Compiled in 746ms (1548 modules)
- GET / 200 in 79ms
- GET / 200 in 81ms
- GET / 200 in 425ms
- ✓ Compiled in 342ms (1548 modules)
- GET / 200 in 216ms
- GET / 200 in 219ms
- GET / 200 in 195ms
- GET / 200 in 181ms
- ✓ Compiled in 2.5s (1557 modules)
- GET / 200 in 121ms
- GET / 200 in 121ms
- ✓ Compiled in 495ms (1548 modules)
- GET / 200 in 88ms
- GET / 200 in 88ms
- ✓ Compiled in 536ms (728 modules)
- GET / 200 in 28ms
- GET / 200 in 30ms
- ✓ Compiled in 664ms (1548 modules)
- GET / 200 in 74ms
- GET / 200 in 75ms
- GET / 200 in 310ms
- ✓ Compiled in 740ms (1548 modules)
- GET / 200 in 129ms
- GET / 200 in 135ms
- GET / 200 in 202ms
+ ⨯ TypeError: fetch failed
+    at async DominatorPage (src/app/dominator/page.tsx:48:27)
+  46 |   }
+  47 |
+> 48 |   const consumeResponse = await requestBackend("/dominator/access/consume", cookieHeader, {
+     |                           ^
+  49 |     method: "POST",
+  50 |     body: JSON.stringify({ token })
+  51 |   }); {
+  digest: '2870904412',
+  [cause]: [Error: read ECONNRESET] {
+    errno: -104,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiJkMzUyN2I5OTBlYjU3YmE1YWFmNmU4MzlkMmViYTY5MCIsImlhdCI6MTc3NzgwMjIwOCwiZXhwIjoxNzc3ODAyMjM4fQ.A9qnHJOUxDtGOFdcxm9iHEr81d9c1EQNEc_NDV72wZ4 500 in 109ms
+ ⨯ TypeError: fetch failed
+    at async DominatorPage (src/app/dominator/page.tsx:39:33)
+  37 |   const cookieHeader = cookieStore.toString();
+  38 |
+> 39 |   const activeSessionResponse = await requestBackend("/dominator/session/me", cookieHeader);
+     |                                 ^
+  40 |   if (activeSessionResponse.ok) {
+  41 |     return <DominatorClient initialChallengeToken={null} hasActiveSession />;
+  42 |   } {
+  digest: '2212537973',
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:4000
+      at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:4000) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 4000
+  }
+}
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiJkMzUyN2I5OTBlYjU3YmE1YWFmNmU4MzlkMmViYTY5MCIsImlhdCI6MTc3NzgwMjIwOCwiZXhwIjoxNzc3ODAyMjM4fQ.A9qnHJOUxDtGOFdcxm9iHEr81d9c1EQNEc_NDV72wZ4 500 in 89ms
+ GET /auth/signin 200 in 83ms
+ GET /auth/callback 200 in 67ms
  GET / 200 in 37ms
- GET / 200 in 50ms
- ✓ Compiled in 610ms (1548 modules)
- GET / 200 in 79ms
- GET / 200 in 80ms
- GET / 200 in 138ms
- ✓ Compiled in 1112ms (1570 modules)
- GET / 200 in 54ms
- GET / 200 in 56ms
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiI4MTljYjBjN2I1NGVlNzE2NjIwNjY5NTgzM2I1MGYyYyIsImlhdCI6MTc3NzgwMzAwNiwiZXhwIjoxNzc3ODAzMDM2fQ.tCypqTh_oNQbHKPYialVKPPOmQZrDHE4trqGqJW_E3k 200 in 94ms
+ GET / 200 in 76ms
+ ⚠ Cross origin request detected from 10.66.26.133 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ GET /auth/signin 200 in 35ms
+ GET / 200 in 100ms
+ ○ Compiling /library ...
+ ✓ Compiled /library in 1108ms (1570 modules)
+ GET /library 200 in 1273ms
+ ○ Compiling /notifications ...
+ ✓ Compiled /notifications in 1392ms (1580 modules)
+ GET / 200 in 745ms
+ GET /notifications 200 in 1478ms
+ GET /library 200 in 101ms
+ GET /account 200 in 50ms
+ GET /library 200 in 33ms
+ GET /account 200 in 41ms
+ ✓ Compiled in 1095ms (1581 modules)
+ GET /account 200 in 195ms
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiI4MTljYjBjN2I1NGVlNzE2NjIwNjY5NTgzM2I1MGYyYyIsImlhdCI6MTc3NzgwMzAwNiwiZXhwIjoxNzc3ODAzMDM2fQ.tCypqTh_oNQbHKPYialVKPPOmQZrDHE4trqGqJW_E3k 200 in 216ms
+ ✓ Compiled in 1253ms (1581 modules)
+ GET /account 200 in 158ms
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiI4MTljYjBjN2I1NGVlNzE2NjIwNjY5NTgzM2I1MGYyYyIsImlhdCI6MTc3NzgwMzAwNiwiZXhwIjoxNzc3ODAzMDM2fQ.tCypqTh_oNQbHKPYialVKPPOmQZrDHE4trqGqJW_E3k 200 in 165ms
+ ✓ Compiled in 528ms (1581 modules)
+ GET /account 200 in 84ms
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiI4MTljYjBjN2I1NGVlNzE2NjIwNjY5NTgzM2I1MGYyYyIsImlhdCI6MTc3NzgwMzAwNiwiZXhwIjoxNzc3ODAzMDM2fQ.tCypqTh_oNQbHKPYialVKPPOmQZrDHE4trqGqJW_E3k 200 in 93ms
+ ⨯ TypeError: fetch failed
+    at async DominatorPage (src/app/dominator/page.tsx:48:27)
+  46 |   }
+  47 |
+> 48 |   const consumeResponse = await requestBackend("/dominator/access/consume", cookieHeader, {
+     |                           ^
+  49 |     method: "POST",
+  50 |     body: JSON.stringify({ token })
+  51 |   }); {
+  digest: '2870904412',
+  [cause]: [Error: read ECONNRESET] {
+    errno: -104,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiI4MTljYjBjN2I1NGVlNzE2NjIwNjY5NTgzM2I1MGYyYyIsImlhdCI6MTc3NzgwMzAwNiwiZXhwIjoxNzc3ODAzMDM2fQ.tCypqTh_oNQbHKPYialVKPPOmQZrDHE4trqGqJW_E3k 500 in 149ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 1092ms (1581 modules)
+ ✓ Compiled in 0ms (859 modules)
+ ✓ Compiled in 1ms (859 modules)
+ ✓ Compiled in 1ms (859 modules)
+ ⨯ TypeError: fetch failed
+    at async DominatorPage (src/app/dominator/page.tsx:39:33)
+  37 |   const cookieHeader = cookieStore.toString();
+  38 |
+> 39 |   const activeSessionResponse = await requestBackend("/dominator/session/me", cookieHeader);
+     |                                 ^
+  40 |   if (activeSessionResponse.ok) {
+  41 |     return <DominatorClient initialChallengeToken={null} hasActiveSession />;
+  42 |   } {
+  digest: '2212537973',
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:4000
+      at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:4000) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 4000
+  }
+}
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiI4MTljYjBjN2I1NGVlNzE2NjIwNjY5NTgzM2I1MGYyYyIsImlhdCI6MTc3NzgwMzAwNiwiZXhwIjoxNzc3ODAzMDM2fQ.tCypqTh_oNQbHKPYialVKPPOmQZrDHE4trqGqJW_E3k 500 in 1449ms
+ GET /account 200 in 1140ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 756ms (1581 modules)
+ ✓ Compiled in 0ms (859 modules)
+ ✓ Compiled in 1ms (859 modules)
+ ✓ Compiled in 0ms (859 modules)
+ ⨯ TypeError: fetch failed
+    at async DominatorPage (src/app/dominator/page.tsx:39:33)
+  37 |   const cookieHeader = cookieStore.toString();
+  38 |
+> 39 |   const activeSessionResponse = await requestBackend("/dominator/session/me", cookieHeader);
+     |                                 ^
+  40 |   if (activeSessionResponse.ok) {
+  41 |     return <DominatorClient initialChallengeToken={null} hasActiveSession />;
+  42 |   } {
+  digest: '2212537973',
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:4000
+      at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:4000) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 4000
+  }
+}
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiI4MTljYjBjN2I1NGVlNzE2NjIwNjY5NTgzM2I1MGYyYyIsImlhdCI6MTc3NzgwMzAwNiwiZXhwIjoxNzc3ODAzMDM2fQ.tCypqTh_oNQbHKPYialVKPPOmQZrDHE4trqGqJW_E3k 500 in 990ms
+ GET /account 200 in 749ms
+ ⨯ TypeError: fetch failed
+    at async DominatorPage (src/app/dominator/page.tsx:39:33)
+  37 |   const cookieHeader = cookieStore.toString();
+  38 |
+> 39 |   const activeSessionResponse = await requestBackend("/dominator/session/me", cookieHeader);
+     |                                 ^
+  40 |   if (activeSessionResponse.ok) {
+  41 |     return <DominatorClient initialChallengeToken={null} hasActiveSession />;
+  42 |   } {
+  digest: '2212537973',
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:4000
+      at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:4000) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 4000
+  }
+}
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiI4MTljYjBjN2I1NGVlNzE2NjIwNjY5NTgzM2I1MGYyYyIsImlhdCI6MTc3NzgwMzAwNiwiZXhwIjoxNzc3ODAzMDM2fQ.tCypqTh_oNQbHKPYialVKPPOmQZrDHE4trqGqJW_E3k 500 in 83ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 658ms (1581 modules)
+ ✓ Compiled in 1ms (859 modules)
+ ✓ Compiled in 0ms (859 modules)
+ ✓ Compiled in 1ms (859 modules)
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiI4MTljYjBjN2I1NGVlNzE2NjIwNjY5NTgzM2I1MGYyYyIsImlhdCI6MTc3NzgwMzAwNiwiZXhwIjoxNzc3ODAzMDM2fQ.tCypqTh_oNQbHKPYialVKPPOmQZrDHE4trqGqJW_E3k 404 in 950ms
+ GET /account 200 in 781ms
+ GET /dominator?token=eyJzdWIiOiI3MDlhYWM2MS0zYmQxLTRiNzUtYTlhMC05NDBjYjRhNzA0NDMiLCJlbWFpbCI6ImlhbS5hcml0cmFwYXJ1aUBnbWFpbC5jb20iLCJqdGkiOiI4MTljYjBjN2I1NGVlNzE2NjIwNjY5NTgzM2I1MGYyYyIsImlhdCI6MTc3NzgwMzAwNiwiZXhwIjoxNzc3ODAzMDM2fQ.tCypqTh_oNQbHKPYialVKPPOmQZrDHE4trqGqJW_E3k 404 in 115ms
+ GET /auth/signin 200 in 70ms
+ ○ Compiling /auth/callback ...
+ ✓ Compiled /auth/callback in 584ms (865 modules)
+ GET /auth/callback 200 in 755ms
+ GET / 200 in 57ms
+ GET /account 200 in 53ms
+ ○ Compiling /notifications ...
+ ✓ Compiled /notifications in 1221ms (866 modules)
+ GET /notifications 200 in 1337ms
+ GET / 200 in 26ms
+ GET /notifications 200 in 32ms
+ GET /library 200 in 46ms
+ ○ Compiling /batches ...
+ ✓ Compiled /batches in 743ms (872 modules)
+ GET /batches 200 in 843ms
+ GET / 200 in 39ms
+ GET /notifications 200 in 45ms
+ GET /batches 200 in 42ms
+ GET /account 200 in 31ms
+ ✓ Compiled in 2.4s (1579 modules)
+ GET /account 200 in 69ms
+ GET / 200 in 47ms
+ ○ Compiling /auth/forgot-password ...
+ ✓ Compiled /auth/forgot-password in 1363ms (1573 modules)
+ GET /auth/forgot-password 200 in 1450ms
+ ○ Compiling /auth/reset-password ...
+ ✓ Compiled /auth/reset-password in 719ms (1584 modules)
+ GET /auth/reset-password?token=22ae19a074814344d8ef5ac838516cf7b3fedc3ef1dce44ee2d7ff679859bd18 200 in 916ms
+ ✓ Compiled /auth/signin in 211ms (854 modules)
+ GET /auth/signin 200 in 326ms
+ GET /auth/signin 200 in 36ms
+ GET / 200 in 48ms
+ GET /account 200 in 56ms
+ GET /account 200 in 74ms
+ GET / 200 in 33ms
+ GET / 200 in 353ms
+ GET /library 200 in 50ms
+ GET / 200 in 26ms
+ GET /library 200 in 53ms
+ GET /library 200 in 49ms
+ GET / 200 in 20ms
+ GET /library 200 in 47ms
+ GET / 200 in 68ms
+ GET /library 200 in 33ms
+ GET / 200 in 38ms
+ ○ Compiling /share/[token] ...
+ ✓ Compiled /share/[token] in 1379ms (855 modules)
+ GET /share/8f55dc00afb64c53bfe17d0173447b0f 200 in 1927ms
+ GET /share/8f55dc00afb64c53bfe17d0173447b0f 200 in 79ms
+ ✓ Compiled in 1960ms (1576 modules)
+ GET / 200 in 132ms
+ GET /auth/signin 200 in 135ms
+ GET /library 200 in 100ms
+ GET /library 200 in 52ms
+ GET /library 200 in 78ms
+ GET / 200 in 55ms
+ ✓ Compiled in 1698ms (727 modules)
+ GET / 200 in 285ms
+ GET /auth/signin 200 in 285ms
+ ✓ Compiled in 4.9s (1576 modules)
+ GET /auth/signin 200 in 487ms
+ GET / 200 in 483ms
+ ⚠ ./src/components/file-viewer.tsx
+Module not found: Can't resolve 'docx-preview' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'xlsx' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'docx-preview' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'xlsx' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+ GET /auth/signin 200 in 3878ms
+ GET / 200 in 3905ms
+ ⚠ ./src/components/file-viewer.tsx
+Module not found: Can't resolve 'docx-preview' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'xlsx' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'docx-preview' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'xlsx' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+ GET /auth/signin 200 in 306ms
+ GET / 200 in 309ms
+ ⚠ ./src/components/file-viewer.tsx
+Module not found: Can't resolve 'docx-preview' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/app/library/library-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'xlsx' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/app/library/library-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'docx-preview' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/app/library/library-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'xlsx' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/app/library/library-client.tsx
+ GET / 200 in 481ms
+ GET /auth/signin 200 in 485ms
+ ⚠ ./src/components/file-viewer.tsx
+Module not found: Can't resolve 'docx-preview' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'xlsx' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'docx-preview' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'xlsx' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/features/media/media-manager.tsx
+./src/app/home-client.tsx
+ GET / 200 in 151ms
+ GET /auth/signin 200 in 153ms
+ ⚠ ./src/components/file-viewer.tsx
+Module not found: Can't resolve 'docx-preview' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/app/library/library-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'xlsx' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/app/library/library-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'docx-preview' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/app/library/library-client.tsx
+
+./src/components/file-viewer.tsx
+Module not found: Can't resolve 'xlsx' in '/home/phoenix/LinkForge/apps/frontend/src/components'
+
+Import trace for requested module:
+./src/components/file-viewer.tsx
+./src/app/library/library-client.tsx
+ GET /auth/signin 200 in 135ms
+ GET / 200 in 136ms
+ ✓ Compiled in 4.2s (1647 modules)
+ ✓ Compiled in 1453ms (1661 modules)
+ GET /auth/signin 200 in 401ms
+ GET / 200 in 398ms
+ ✓ Compiled in 2.8s (1661 modules)
+ GET /auth/signin 200 in 292ms
+ GET / 200 in 293ms
+ ✓ Compiled in 1031ms (1661 modules)
+ GET / 200 in 127ms
+ GET /auth/signin 200 in 127ms
+ GET /auth/signin 200 in 60ms
+ GET / 200 in 35ms
+ GET / 200 in 395ms
+ GET /library 200 in 35ms
+ GET / 200 in 36ms
+ GET /library 200 in 58ms
+ GET / 200 in 49ms
+ GET /library 200 in 41ms
+ GET /library 200 in 107ms
+ GET / 200 in 24ms
+ ✓ Compiled in 2.9s (1661 modules)
+ GET /auth/signin 200 in 133ms
+ GET / 200 in 135ms
+ ✓ Compiled in 3s (1661 modules)
+ GET / 200 in 132ms
+ GET /auth/signin 200 in 133ms
+ ✓ Compiled in 725ms (1661 modules)
+ GET / 200 in 100ms
+ GET /auth/signin 200 in 102ms
+ ✓ Compiled in 1162ms (1661 modules)
+ GET /auth/signin 200 in 182ms
+ GET / 200 in 183ms
+ ✓ Compiled in 1421ms (1661 modules)
+ GET /auth/signin 200 in 276ms
+ GET / 200 in 275ms
+ GET /library 200 in 49ms
+ GET /library 200 in 145ms
+ GET /library 200 in 79ms
+ GET / 200 in 42ms
+ GET /library 200 in 53ms
+ ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+   ▲ Next.js 15.5.15
+   - Local:        http://localhost:3000
+   - Network:      http://172.18.0.1:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.4s
+ ○ Compiling /library ...
+ ✓ Compiled /library in 2.1s (716 modules)
+ GET /library 200 in 2803ms
+ ✓ Compiled in 2.4s (730 modules)
+ GET /library 200 in 197ms
+ ✓ Compiled in 648ms (730 modules)
+ GET /library 200 in 60ms
+ GET /library 200 in 178ms
+ ○ Compiling / ...
+ ✓ Compiled / in 3.1s (1598 modules)
+ GET / 200 in 3361ms
+ GET /library 200 in 81ms
+ GET / 200 in 32ms
+ GET /library 200 in 81ms
+ ✓ Compiled in 1988ms (1612 modules)
+ GET /library 200 in 307ms
+ ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+   ▲ Next.js 15.5.15
+   - Local:        http://localhost:3000
+   - Network:      http://172.18.0.1:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 3.5s
+ ○ Compiling /library ...
+ ✓ Compiled /library in 3.3s (730 modules)
+ GET /library 200 in 3675ms
+ GET /library 200 in 94ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.9s (1612 modules)
+ GET / 200 in 3089ms
+ GET / 200 in 34ms
+ GET /library 200 in 63ms
+ GET / 200 in 48ms
+ ✓ Compiled in 1105ms (1612 modules)
+ GET / 200 in 461ms
+ GET / 200 in 66ms
+ ⚠ Cross origin request detected from 10.66.26.230 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ○ Compiling /auth/signin ...
+ ✓ Compiled /auth/signin in 1541ms (1612 modules)
+ GET /auth/signin 200 in 1719ms
+ GET / 200 in 42ms
+ GET /library 200 in 85ms
+ GET /library 200 in 159ms
+ ○ Compiling /account ...
+ ✓ Compiled /account in 1049ms (1620 modules)
+ GET /account 200 in 1148ms
+ GET /auth/signin 200 in 46ms
+ GET /library 200 in 151ms
+ GET /auth/signin 200 in 32ms
+ GET / 200 in 40ms
+ GET / 200 in 236ms
+ ✓ Compiled in 831ms (1634 modules)
+ GET / 200 in 93ms
+ GET / 200 in 95ms
+ GET / 200 in 215ms
+ GET /auth/signin 200 in 54ms
+ GET / 200 in 22ms
+ GET /library 200 in 43ms
+ GET /library 200 in 71ms
+ ✓ Compiled in 1106ms (1634 modules)
+ GET / 200 in 96ms
+ ✓ Compiled in 685ms (1634 modules)
+ GET / 200 in 132ms
+ ✓ Compiled in 1110ms (1634 modules)
+ GET / 200 in 75ms
+ ✓ Compiled in 511ms (1634 modules)
+ GET / 200 in 58ms
+ ✓ Compiled in 989ms (1634 modules)
+ GET / 200 in 116ms
+ ✓ Compiled in 871ms (1634 modules)
+ GET / 200 in 78ms
+ ✓ Compiled in 820ms (1634 modules)
+ GET / 200 in 82ms
+ ✓ Compiled in 952ms (1634 modules)
+ GET / 200 in 91ms
+ ✓ Compiled in 1410ms (1634 modules)
+ GET / 200 in 88ms
+ GET /library 200 in 160ms
+ GET / 200 in 201ms
+ ✓ Compiled in 1524ms (1634 modules)
+ GET / 200 in 262ms
+ ✓ Compiled in 2.4s (1634 modules)
+ GET / 200 in 192ms
+ ✓ Compiled in 1199ms (1634 modules)
+ GET / 200 in 90ms

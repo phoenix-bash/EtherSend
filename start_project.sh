@@ -213,6 +213,12 @@ start_service() {
 }
 
 main() {
+  if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    echo "[ERROR] Do not run this script with sudo/root."
+    echo "[HINT] Run as your normal user: ./start_local.sh"
+    exit 1
+  fi
+
   ensure_pnpm
   require_cmd docker
   require_cmd ss
@@ -230,7 +236,7 @@ main() {
   docker compose --project-directory "$ROOT_DIR" -f "$ROOT_DIR/docker-compose.yml" up -d
 
   echo "[STEP] Installing dependencies..."
-  pnpm install
+  CI=1 pnpm install --force
 
   echo "[STEP] Preparing database client/schema..."
   pnpm --filter @linkforge/backend prisma:generate

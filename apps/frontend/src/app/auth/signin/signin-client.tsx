@@ -4,15 +4,24 @@ import { type FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, Github } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { API_BASE_URL, ApiError, signinWithEmail, signupWithEmail } from "../../../lib/api-client";
+import {
+  API_BASE_URL,
+  ApiError,
+  extractApiErrorCode,
+  resolveSecurityTeaseMessage,
+  signinWithEmail,
+  signupWithEmail
+} from "../../../lib/api-client";
 
 const GUEST_MODE_STORAGE_KEY = "lf_guest_mode_enabled";
+const GUEST_MODE_EXPIRES_AT_KEY = "lf_guest_mode_expires_at";
+const GUEST_SESSION_TTL_MS = 15 * 60 * 1000;
 const GUEST_UPLOAD_CHOICE_KEY = "ethersend:guest-upload-choice";
 const GUEST_CONTINUE_CHOICE = "continue";
 
 function oauthStartUrl(provider: "github"): string {
   const query = new URLSearchParams({
-    mode: "token",
+    mode: "cookie",
     redirectPath: "/auth/callback"
   });
 
@@ -20,15 +29,6 @@ function oauthStartUrl(provider: "github"): string {
 }
 
 type AuthMode = "signin" | "signup";
-
-function extractApiErrorCode(error: ApiError): string | undefined {
-  if (!error.details || typeof error.details !== "object") {
-    return undefined;
-  }
-
-  const maybeCode = (error.details as { code?: unknown }).code;
-  return typeof maybeCode === "string" ? maybeCode : undefined;
-}
 
 export default function SignInPage() {
   const router = useRouter();
@@ -68,6 +68,7 @@ export default function SignInPage() {
 
   function handleContinueAsGuest(): void {
     window.localStorage.setItem(GUEST_MODE_STORAGE_KEY, "true");
+    window.localStorage.setItem(GUEST_MODE_EXPIRES_AT_KEY, String(Date.now() + GUEST_SESSION_TTL_MS));
     if (source === "upload") {
       window.localStorage.setItem(GUEST_UPLOAD_CHOICE_KEY, GUEST_CONTINUE_CHOICE);
     }
@@ -75,16 +76,8 @@ export default function SignInPage() {
     router.push(returnTo);
   }
 
-  function openOAuthPopup(provider: "github"): void {
-    const popup = window.open(
-      oauthStartUrl(provider),
-      "ethersend-auth",
-      "width=520,height=720,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes"
-    );
-
-    if (!popup) {
-      window.location.href = oauthStartUrl(provider);
-    }
+  function startOAuthInSameTab(provider: "github"): void {
+    window.location.href = oauthStartUrl(provider);
   }
 
   async function onAuthSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -137,7 +130,7 @@ export default function SignInPage() {
           return;
         }
 
-        setError(caughtError.message);
+        setError(resolveSecurityTeaseMessage(caughtError) ?? caughtError.message);
       } else {
         setError("Authentication request failed.");
       }
@@ -152,10 +145,10 @@ export default function SignInPage() {
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-primary/5 blur-[120px]"></div>
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-secondary/5 blur-[120px]"></div>
 
-      <section className="glass-card relative z-10 w-full max-w-[430px] rounded-lg border border-outline-variant/20 p-10 shadow-[0px_0px_36px_rgba(75,188,214,0.06)]">
+      <section className="glass-card relative z-10 w-full max-w-[430px] rounded-lg border border-outline-variant/20 p-10 shadow-[0px_0px_36px_rgba(111,77,230,0.1)]">
         <div className="mb-10 text-center">
           <Link href="/" className="mx-auto block w-fit">
-            <div className="group mb-6 mx-auto inline-flex h-14 w-14 items-center justify-center rounded-lg bg-surface-container-high shadow-[0px_0px_16px_rgba(75,188,214,0.12)] transition-all duration-300 hover:shadow-[0px_0px_22px_rgba(75,188,214,0.18)]">
+            <div className="group mb-6 mx-auto inline-flex h-14 w-14 items-center justify-center rounded-lg bg-surface-container-high shadow-[0px_0px_16px_rgba(111,77,230,0.16)] transition-all duration-300 hover:shadow-[0px_0px_22px_rgba(111,77,230,0.22)]">
               <img
                 src="/Media_Assets/EtherSend.png"
                 alt="EtherSend logo"
@@ -310,7 +303,7 @@ export default function SignInPage() {
         <button
           type="button"
           onClick={() => {
-            openOAuthPopup("github");
+            startOAuthInSameTab("github");
           }}
           className="group flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-high transition-all duration-200 active:scale-[0.98] hover:bg-surface-bright"
         >
