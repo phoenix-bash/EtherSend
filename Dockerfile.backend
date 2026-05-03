@@ -20,10 +20,13 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/backend/package.json apps/backend/package.json
 COPY packages/shared/package.json packages/shared/package.json
 
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
-COPY --from=builder /app/apps/backend ./apps/backend
+COPY apps/backend ./apps/backend
+COPY packages/shared ./packages/shared
+
 RUN pnpm --filter @linkforge/backend prisma:generate
+RUN pnpm --filter @linkforge/backend build
 
 EXPOSE 4000
 CMD ["pnpm", "--filter", "@linkforge/backend", "start"]
