@@ -13,5 +13,4 @@ deploy/nginx/certs/*
 !deploy/nginx/certs/.gitkeep
 docker-compose.yml
 .codex                  
-/logs/backend.log
-/logs/frontend.log
+/logs/
