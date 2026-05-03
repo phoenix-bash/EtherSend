@@ -426,19 +426,20 @@ export default function MediaLibraryPage() {
             signal: controller.signal
           });
 
-          if (!slidesResponse.ok) {
-            throw new Error(`Slide preview request failed with status ${slidesResponse.status}`);
-          }
+          if (slidesResponse.ok) {
+            const payload = (await slidesResponse.json()) as { slides?: string[] };
+            if (disposed) {
+              return;
+            }
 
-          const payload = (await slidesResponse.json()) as { slides?: string[] };
-          if (disposed) {
-            return;
+            const slideUrls = (payload.slides ?? []).map((slidePath) => absoluteApiUrl(slidePath));
+            if (slideUrls.length > 0) {
+              setPreviewSlideImageUrls(slideUrls);
+              setPreviewMimeType(currentPreviewItem.mimeType);
+              setPreviewLoading(false);
+              return;
+            }
           }
-
-          setPreviewSlideImageUrls((payload.slides ?? []).map((slidePath) => absoluteApiUrl(slidePath)));
-          setPreviewMimeType(currentPreviewItem.mimeType);
-          setPreviewLoading(false);
-          return;
         }
 
         if (isMobileDevice() && isPdfFile(currentPreviewItem)) {
@@ -448,19 +449,20 @@ export default function MediaLibraryPage() {
             signal: controller.signal
           });
 
-          if (!pagesResponse.ok) {
-            throw new Error(`PDF pages request failed with status ${pagesResponse.status}`);
-          }
+          if (pagesResponse.ok) {
+            const payload = (await pagesResponse.json()) as { pages?: string[] };
+            if (disposed) {
+              return;
+            }
 
-          const payload = (await pagesResponse.json()) as { pages?: string[] };
-          if (disposed) {
-            return;
+            const pageUrls = (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
+            if (pageUrls.length > 0) {
+              setPreviewPdfPageImageUrls(pageUrls);
+              setPreviewMimeType("application/pdf");
+              setPreviewLoading(false);
+              return;
+            }
           }
-
-          setPreviewPdfPageImageUrls((payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath)));
-          setPreviewMimeType("application/pdf");
-          setPreviewLoading(false);
-          return;
         }
 
         const sourceUrl = mediaViewUrl(currentPreviewItem.id);
@@ -1044,13 +1046,13 @@ export default function MediaLibraryPage() {
 
         {previewItem ? (
           <div
-            className="fixed inset-x-0 bottom-0 top-14 z-[70] flex items-center justify-center bg-[rgb(20_24_30_/_0.86)] p-3 sm:p-5"
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgb(20_24_30_/_0.86)] p-3 sm:p-5"
             onClick={() => {
               closePreview();
             }}
           >
             <div
-              className="flex h-[min(88vh,46rem)] w-full max-w-6xl flex-col rounded-xl border border-outline-variant/20 bg-surface-container p-3 sm:p-5"
+              className="my-auto flex h-[min(calc(100dvh-6rem),46rem)] w-full max-w-6xl flex-col rounded-xl border border-outline-variant/20 bg-surface-container p-3 sm:h-[min(calc(100dvh-7rem),46rem)] sm:p-5"
               onClick={(event) => {
                 event.stopPropagation();
               }}
