@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import { Eye, EyeOff, Github } from "lucide-react";
+import { Chrome, Eye, EyeOff, Github } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   API_BASE_URL,
@@ -19,7 +19,7 @@ const GUEST_SESSION_TTL_MS = 15 * 60 * 1000;
 const GUEST_UPLOAD_CHOICE_KEY = "ethersend:guest-upload-choice";
 const GUEST_CONTINUE_CHOICE = "continue";
 
-function oauthStartUrl(provider: "github"): string {
+function oauthStartUrl(provider: "google" | "github"): string {
   const query = new URLSearchParams({
     mode: "cookie",
     redirectPath: "/auth/callback"
@@ -76,7 +76,7 @@ export default function SignInPage() {
     router.push(returnTo);
   }
 
-  function startOAuthInSameTab(provider: "github"): void {
+  function startOAuthInSameTab(provider: "google" | "github"): void {
     window.location.href = oauthStartUrl(provider);
   }
 
@@ -300,16 +300,29 @@ export default function SignInPage() {
           <div className="h-px flex-1 bg-outline-variant/20" />
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            startOAuthInSameTab("github");
-          }}
-          className="group flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-high transition-all duration-200 active:scale-[0.98] hover:bg-surface-bright"
-        >
-          <Github className="h-4 w-4" />
-          <span className="text-xs font-label uppercase tracking-wider text-on-surface">Continue with GitHub</span>
-        </button>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              startOAuthInSameTab("google");
+            }}
+            className="group flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-high transition-all duration-200 active:scale-[0.98] hover:bg-surface-bright"
+          >
+            <Chrome className="h-4 w-4" />
+            <span className="text-xs font-label uppercase tracking-wider text-on-surface">Continue with Google</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              startOAuthInSameTab("github");
+            }}
+            className="group flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-high transition-all duration-200 active:scale-[0.98] hover:bg-surface-bright"
+          >
+            <Github className="h-4 w-4" />
+            <span className="text-xs font-label uppercase tracking-wider text-on-surface">Continue with GitHub</span>
+          </button>
+        </div>
 
         {status ? <p className="mt-4 text-xs text-primary">{status}</p> : null}
         {error ? <p className="mt-2 text-xs text-error">{error}</p> : null}
