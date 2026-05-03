@@ -10,6 +10,7 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/backend/package.json apps/backend/package.json
+
 COPY packages/shared/package.json packages/shared/package.json
 
 RUN pnpm install --frozen-lockfile
@@ -43,6 +44,9 @@ COPY apps/backend/package.json apps/backend/package.json
 COPY packages/shared/package.json packages/shared/package.json
 
 RUN pnpm install --prod --frozen-lockfile
+
+COPY --from=builder /app/apps/backend ./apps/backend
+RUN pnpm --filter @linkforge/backend prisma:generate
 
 COPY --from=builder /app/apps/backend ./apps/backend
 
