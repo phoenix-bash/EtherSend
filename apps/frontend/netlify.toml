@@ -4,3 +4,9 @@ command = "corepack enable && pnpm install --no-frozen-lockfile && pnpm build"
 
 [[plugins]]
 package = "@netlify/plugin-nextjs"
+
+[[redirects]]
+from = "/api/*"
+to = "https://ethersend-backend.onrender.com/:splat"
+status = 200
+force = true

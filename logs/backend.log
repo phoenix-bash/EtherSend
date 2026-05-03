@@ -4318,12 +4318,11 @@ Node.js v22.22.1
 {"level":30,"time":1777817824728,"pid":92025,"hostname":"Hades","reqId":"req-4n","res":{"statusCode":200},"responseTime":62.79702500253916,"msg":"request completed"}
 {"level":30,"time":1777817884689,"pid":92025,"hostname":"Hades","reqId":"req-4o","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":48442},"msg":"incoming request"}
 {"level":30,"time":1777817884709,"pid":92025,"hostname":"Hades","reqId":"req-4o","res":{"statusCode":200},"responseTime":19.674626000225544,"msg":"request completed"}
-75205,"hostname":"Hades","reqId":"req-2g","res":{"statusCode":200},"responseTime":3.102786999195814,"msg":"request completed"}
-{"level":30,"time":1777803157837,"pid":75205,"hostname":"Hades","reqId":"req-2i","res":{"statusCode":200},"responseTime":2.064886000007391,"msg":"request completed"}
-{"level":30,"time":1777803157838,"pid":75205,"hostname":"Hades","reqId":"req-2h","res":{"statusCode":200},"responseTime":3.816294003278017,"msg":"request completed"}
-{"level":30,"time":1777803157838,"pid":75205,"hostname":"Hades","reqId":"req-2j","req":{"method":"GET","url":"/auth/me","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60762},"msg":"incoming request"}
-{"level":30,"time":1777803157839,"pid":75205,"hostname":"Hades","reqId":"req-2k","req":{"method":"GET","url":"/media","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60768},"msg":"incoming request"}
-{"level":30,"time":1777803157842,"pid":75205,"hostname":"Hades","reqId":"req-2j","res":{"statusCode":200},"responseTime":3.6637500002980232,"msg":"request completed"}
+{"level":30,"time":1777827936163,"pid":92025,"hostname":"Hades","reqId":"req-4p","req":{"method":"GET","url":"/auth/github/callback?code=09a6785fb02e48846202&state=eyJtb2RlIjoiY29va2llIiwicmVkaXJlY3RQYXRoIjoiL2F1dGgvY2FsbGJhY2sifQ","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":39640},"msg":"incoming request"}
+{"level":30,"time":1777827937746,"pid":92025,"hostname":"Hades","reqId":"req-4p","res":{"statusCode":302},"responseTime":1583.4861619994044,"msg":"request completed"}
+{"level":30,"time":1777829525462,"pid":92025,"hostname":"Hades","reqId":"req-4q","req":{"method":"GET","url":"/auth/github/callback?code=696425807a6076b2ff98&state=eyJtb2RlIjoiY29va2llIiwicmVkaXJlY3RQYXRoIjoiL2F1dGgvY2FsbGJhY2sifQ","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59522},"msg":"incoming request"}
+{"level":30,"time":1777829527007,"pid":92025,"hostname":"Hades","reqId":"req-4q","res":{"statusCode":302},"responseTime":1545.1165929958224,"msg":"request completed"}
+200},"responseTime":3.6637500002980232,"msg":"request completed"}
 {"level":30,"time":1777803157843,"pid":75205,"hostname":"Hades","reqId":"req-2k","res":{"statusCode":200},"responseTime":3.347962997853756,"msg":"request completed"}
 {"level":30,"time":1777803157844,"pid":75205,"hostname":"Hades","reqId":"req-2l","req":{"method":"GET","url":"/auth/me","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51152},"msg":"incoming request"}
 {"level":30,"time":1777803157847,"pid":75205,"hostname":"Hades","reqId":"req-2l","res":{"statusCode":200},"responseTime":2.7525539994239807,"msg":"request completed"}

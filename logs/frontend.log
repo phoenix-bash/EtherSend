@@ -708,3 +708,27 @@ Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allow
   path: '/home/phoenix/LinkForge/apps/frontend/src/app'
 }
  ✓ Compiled / in 7ms
+[Error: ENOENT: no such file or directory, scandir '/home/phoenix/LinkForge/apps/frontend/src/app'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'scandir',
+  path: '/home/phoenix/LinkForge/apps/frontend/src/app'
+}
+[Error: ENOENT: no such file or directory, scandir '/home/phoenix/LinkForge/apps/frontend/src/app'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'scandir',
+  path: '/home/phoenix/LinkForge/apps/frontend/src/app'
+}
+[Error: ENOENT: no such file or directory, scandir '/home/phoenix/LinkForge/apps/frontend/src/app'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'scandir',
+  path: '/home/phoenix/LinkForge/apps/frontend/src/app'
+}
+[Error: ENOENT: no such file or directory, scandir '/home/phoenix/LinkForge/apps/frontend/src/app'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'scandir',
+  path: '/home/phoenix/LinkForge/apps/frontend/src/app'
+}
