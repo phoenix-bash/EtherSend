@@ -46,6 +46,9 @@ importers:
       '@types/node':
         specifier: ^22.13.10
         version: 22.19.17
+      '@types/nodemailer':
+        specifier: ^8.0.0
+        version: 8.0.0
       '@types/qrcode':
         specifier: ^1.5.5
         version: 1.5.6
@@ -104,9 +107,6 @@ importers:
         specifier: ^3.24.2
         version: 3.25.76
     devDependencies:
-      '@types/nodemailer':
-        specifier: ^8.0.0
-        version: 8.0.0
       eslint:
         specifier: ^9.22.0
         version: 9.39.4(jiti@2.6.1)

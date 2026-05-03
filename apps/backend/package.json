@@ -30,6 +30,7 @@
     "@fastify/rate-limit": "^10.2.1",
     "@prisma/client": "^6.5.0",
     "@types/qrcode": "^1.5.5",
+    "@types/nodemailer": "^8.0.0",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.56.8",
     "dotenv": "^16.4.7",
