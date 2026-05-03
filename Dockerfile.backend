@@ -32,10 +32,6 @@ RUN corepack enable
 # install runtime deps ONLY here
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice \
-    libreoffice-impress \
-    libreoffice-writer \
-    libreoffice-calc \
-    libreoffice-core \
     fonts-dejavu \
     poppler-utils \
   && rm -rf /var/lib/apt/lists/*
