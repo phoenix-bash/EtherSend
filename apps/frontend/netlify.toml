@@ -1,5 +1,6 @@
 [build]
-command = "cd ../.. && corepack enable && pnpm install --no-frozen-lockfile && pnpm --filter @linkforge/frontend build"
+base = "."
+command = "corepack enable && pnpm install --no-frozen-lockfile && pnpm build"
 
 [[plugins]]
 package = "@netlify/plugin-nextjs"
