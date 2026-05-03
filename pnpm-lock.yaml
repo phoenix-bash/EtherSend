@@ -156,6 +156,9 @@ importers:
         specifier: ^0.18.5
         version: 0.18.5
     devDependencies:
+      '@netlify/plugin-nextjs':
+        specifier: ^5.15.10
+        version: 5.15.10
       '@types/node':
         specifier: ^22.13.10
         version: 22.19.17
@@ -852,6 +855,10 @@ packages:
     resolution: {integrity: sha512-x0fWaQtYp4E6sktbsdAqnehxDgEc/VwM7uLsRCYWaiGu0ykYdZPiS8zCWdnjHwyiumousxfBm4SO31eXqwEZhQ==}
     cpu: [x64]
     os: [win32]
+
+  '@netlify/plugin-nextjs@5.15.10':
+    resolution: {integrity: sha512-Mf64nZvoDRwRCMdCjNpxCptWzpF0Vb5pcgZEoZhofI1Yi1UhnXSnxqpMHsKovl9LfCm375AjUbEgH3R3gGEBUw==}
+    engines: {node: '>=18.0.0'}
 
   '@next/env@15.5.15':
     resolution: {integrity: sha512-vcmyu5/MyFzN7CdqRHO3uHO44p/QPCZkuTUXroeUmhNP8bL5PHFEhik22JUazt+CDDoD6EpBYRCaS2pISL+/hg==}
@@ -3920,6 +3927,8 @@ snapshots:
 
   '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3':
     optional: true
+
+  '@netlify/plugin-nextjs@5.15.10': {}
 
   '@next/env@15.5.15': {}
 

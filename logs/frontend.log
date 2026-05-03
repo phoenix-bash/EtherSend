@@ -687,3 +687,4 @@ Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allow
  GET / 200 in 192ms
  ✓ Compiled in 1199ms (1634 modules)
  GET / 200 in 90ms
+ ⨯ Module not found: Error: Can't resolve 'next-flight-client-entry-loader' in '/home/phoenix/LinkForge/apps/frontend'
