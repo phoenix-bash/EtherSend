@@ -4310,16 +4310,15 @@ Node.js v22.22.1
 {"level":30,"time":1777817584674,"pid":92025,"hostname":"Hades","reqId":"req-4j","res":{"statusCode":200},"responseTime":20.18038000166416,"msg":"request completed"}
 {"level":30,"time":1777817644652,"pid":92025,"hostname":"Hades","reqId":"req-4k","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":48442},"msg":"incoming request"}
 {"level":30,"time":1777817644682,"pid":92025,"hostname":"Hades","reqId":"req-4k","res":{"statusCode":200},"responseTime":27.697301000356674,"msg":"request completed"}
-t"}
-{"level":30,"time":1777803157828,"pid":75205,"hostname":"Hades","reqId":"req-2f","req":{"method":"GET","url":"/auth/me","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60756},"msg":"incoming request"}
-{"level":30,"time":1777803157829,"pid":75205,"hostname":"Hades","reqId":"req-2d","res":{"statusCode":200},"responseTime":4.535955000668764,"msg":"request completed"}
-{"level":30,"time":1777803157830,"pid":75205,"hostname":"Hades","reqId":"req-2c","res":{"statusCode":200},"responseTime":6.3568489998579025,"msg":"request completed"}
-{"level":30,"time":1777803157831,"pid":75205,"hostname":"Hades","reqId":"req-2f","res":{"statusCode":200},"responseTime":2.838900998234749,"msg":"request completed"}
-{"level":30,"time":1777803157832,"pid":75205,"hostname":"Hades","reqId":"req-2e","res":{"statusCode":200},"responseTime":4.046006001532078,"msg":"request completed"}
-{"level":30,"time":1777803157833,"pid":75205,"hostname":"Hades","reqId":"req-2g","req":{"method":"GET","url":"/auth/me","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51168},"msg":"incoming request"}
-{"level":30,"time":1777803157834,"pid":75205,"hostname":"Hades","reqId":"req-2h","req":{"method":"GET","url":"/batches","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51152},"msg":"incoming request"}
-{"level":30,"time":1777803157835,"pid":75205,"hostname":"Hades","reqId":"req-2i","req":{"method":"GET","url":"/media","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60768},"msg":"incoming request"}
-{"level":30,"time":1777803157836,"pid":75205,"hostname":"Hades","reqId":"req-2g","res":{"statusCode":200},"responseTime":3.102786999195814,"msg":"request completed"}
+{"level":30,"time":1777817704657,"pid":92025,"hostname":"Hades","reqId":"req-4l","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":48442},"msg":"incoming request"}
+{"level":30,"time":1777817704671,"pid":92025,"hostname":"Hades","reqId":"req-4l","res":{"statusCode":200},"responseTime":13.453108996152878,"msg":"request completed"}
+{"level":30,"time":1777817764652,"pid":92025,"hostname":"Hades","reqId":"req-4m","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":48442},"msg":"incoming request"}
+{"level":30,"time":1777817764658,"pid":92025,"hostname":"Hades","reqId":"req-4m","res":{"statusCode":200},"responseTime":4.952800005674362,"msg":"request completed"}
+{"level":30,"time":1777817824665,"pid":92025,"hostname":"Hades","reqId":"req-4n","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":48442},"msg":"incoming request"}
+{"level":30,"time":1777817824728,"pid":92025,"hostname":"Hades","reqId":"req-4n","res":{"statusCode":200},"responseTime":62.79702500253916,"msg":"request completed"}
+{"level":30,"time":1777817884689,"pid":92025,"hostname":"Hades","reqId":"req-4o","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":48442},"msg":"incoming request"}
+{"level":30,"time":1777817884709,"pid":92025,"hostname":"Hades","reqId":"req-4o","res":{"statusCode":200},"responseTime":19.674626000225544,"msg":"request completed"}
+75205,"hostname":"Hades","reqId":"req-2g","res":{"statusCode":200},"responseTime":3.102786999195814,"msg":"request completed"}
 {"level":30,"time":1777803157837,"pid":75205,"hostname":"Hades","reqId":"req-2i","res":{"statusCode":200},"responseTime":2.064886000007391,"msg":"request completed"}
 {"level":30,"time":1777803157838,"pid":75205,"hostname":"Hades","reqId":"req-2h","res":{"statusCode":200},"responseTime":3.816294003278017,"msg":"request completed"}
 {"level":30,"time":1777803157838,"pid":75205,"hostname":"Hades","reqId":"req-2j","req":{"method":"GET","url":"/auth/me","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60762},"msg":"incoming request"}
