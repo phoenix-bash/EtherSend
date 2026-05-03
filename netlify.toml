@@ -1,6 +1,6 @@
 [build]
 base = "apps/frontend"
-command = "corepack enable && pnpm install --no-frozen-lockfile && pnpm build"
+command = "cd ../.. && corepack enable && pnpm install --no-frozen-lockfile && pnpm --filter frontend build"
 publish = ".next"
 
 [[plugins]]
