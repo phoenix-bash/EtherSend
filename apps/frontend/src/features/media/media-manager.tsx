@@ -13,6 +13,7 @@ import {
   getAccessToken,
   listMedia,
   mediaPdfPagesUrl,
+  mediaPreviewPdfUrl,
   mediaPptxSlidesUrl,
   mediaViewUrl,
   replaceMedia,
@@ -192,6 +193,25 @@ function isPdfFile(mimeType: string, fileName: string): boolean {
 
   const normalizedFileName = fileName.trim().toLowerCase();
   return normalizedFileName.endsWith(".pdf");
+}
+
+function isOfficeDocument(mimeType: string, fileName: string): boolean {
+  const normalizedMime = mimeType.toLowerCase();
+  if (
+    normalizedMime.includes("application/msword") ||
+    normalizedMime.includes("application/vnd.ms-") ||
+    normalizedMime.includes("application/vnd.openxmlformats-officedocument") ||
+    normalizedMime.includes("application/vnd.oasis.opendocument")
+  ) {
+    return true;
+  }
+
+  if (normalizedMime === "text/plain" || normalizedMime === "text/html") {
+    return true;
+  }
+
+  const normalizedFileName = fileName.trim().toLowerCase();
+  return [".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".pps", ".ppsx", ".odt", ".ods", ".odp", ".txt", ".html", ".htm"].some((ext) => normalizedFileName.endsWith(ext));
 }
 
 function isMobileDevice(): boolean {
@@ -400,51 +420,74 @@ export function MediaManager() {
     try {
       if (pptxFile) {
         const slidesResponse = await fetch(mediaPptxSlidesUrl(item.id), { credentials: "include", headers });
-        if (!slidesResponse.ok) {
-          throw new Error(`Slide preview request failed with status ${slidesResponse.status}`);
-        }
+        if (slidesResponse.ok) {
+          const payload = (await slidesResponse.json()) as { slides?: string[] };
+          const slideUrls = (payload.slides ?? []).map((slidePath) => absoluteApiUrl(slidePath));
 
-        const payload = (await slidesResponse.json()) as { slides?: string[] };
-        const slideUrls = (payload.slides ?? []).map((slidePath) => absoluteApiUrl(slidePath));
+          if (slideUrls.length > 0) {
+            setPreview((current) => {
+              if (!current || current.sourceUrl !== sourceUrl) {
+                return current;
+              }
 
-        setPreview((current) => {
-          if (!current || current.sourceUrl !== sourceUrl) {
-            return current;
+              return {
+                ...current,
+                mimeType: item.mimeType,
+                pptxSlideImageUrls: slideUrls,
+                pdfPageImageUrls: undefined,
+                loading: false
+              };
+            });
+            return;
           }
-
-          return {
-            ...current,
-            mimeType: item.mimeType,
-            pptxSlideImageUrls: slideUrls,
-            pdfPageImageUrls: undefined,
-            loading: false
-          };
-        });
-        return;
+        }
       }
 
       if (isMobileDevice() && pdfFile) {
         const pagesResponse = await fetch(mediaPdfPagesUrl(item.id), { credentials: "include", headers });
-        if (!pagesResponse.ok) {
-          throw new Error(`PDF pages request failed with status ${pagesResponse.status}`);
-        }
+        if (pagesResponse.ok) {
+          const payload = (await pagesResponse.json()) as { pages?: string[] };
+          const pageUrls = (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
 
-        const payload = (await pagesResponse.json()) as { pages?: string[] };
-        const pageUrls = (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
+          if (pageUrls.length > 0) {
+            setPreview((current) => {
+              if (!current || current.sourceUrl !== sourceUrl) {
+                return current;
+              }
 
-        setPreview((current) => {
-          if (!current || current.sourceUrl !== sourceUrl) {
-            return current;
+              return {
+                ...current,
+                mimeType: "application/pdf",
+                pdfPageImageUrls: pageUrls,
+                loading: false
+              };
+            });
+            return;
           }
+        }
+      }
 
-          return {
-            ...current,
-            mimeType: "application/pdf",
-            pdfPageImageUrls: pageUrls,
-            loading: false
-          };
-        });
-        return;
+      if (isOfficeDocument(item.mimeType, item.filename) && !pdfFile) {
+        const officePreviewResponse = await fetch(mediaPreviewPdfUrl(item.id), { credentials: "include", headers });
+        if (officePreviewResponse.ok) {
+          const blob = await officePreviewResponse.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          setPreview((current) => {
+            if (!current || current.sourceUrl !== sourceUrl) {
+              URL.revokeObjectURL(objectUrl);
+              return current;
+            }
+
+            return {
+              ...current,
+              mimeType: "application/pdf",
+              blob,
+              objectUrl,
+              loading: false
+            };
+          });
+          return;
+        }
       }
 
       const response = await fetch(sourceUrl, { credentials: "include", headers });
@@ -1498,6 +1541,7 @@ export function MediaManager() {
                       textContent={preview.textContent}
                       pdfPageImageUrls={preview.pdfPageImageUrls}
                       pptxSlideImageUrls={preview.pptxSlideImageUrls}
+                      allowDownload={false}
                     />
                   )}
                 </div>

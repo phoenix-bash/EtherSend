@@ -12,6 +12,7 @@ import {
   listMedia,
   mediaDownloadUrl,
   mediaPdfPagesUrl,
+  mediaPreviewPdfUrl,
   mediaPptxSlidesUrl,
   mediaViewUrl,
   replaceMedia,
@@ -158,6 +159,25 @@ function isPdfFile(item: Pick<MediaItem, "mimeType" | "filename" | "extension">)
 
   const extension = (item.extension || item.filename.split(".").pop() || "").toLowerCase();
   return extension === "pdf";
+}
+
+function isOfficeDocument(item: Pick<MediaItem, "mimeType" | "filename" | "extension">): boolean {
+  const mime = item.mimeType.toLowerCase();
+  if (
+    mime.includes("application/msword") ||
+    mime.includes("application/vnd.ms-") ||
+    mime.includes("application/vnd.openxmlformats-officedocument") ||
+    mime.includes("application/vnd.oasis.opendocument")
+  ) {
+    return true;
+  }
+
+  if (mime === "text/plain" || mime === "text/html") {
+    return true;
+  }
+
+  const extension = (item.extension || item.filename.split(".").pop() || "").toLowerCase();
+  return ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "pps", "ppsx", "odt", "ods", "odp", "txt", "html", "htm"].includes(extension);
 }
 
 function isMobileDevice(): boolean {
@@ -465,6 +485,35 @@ export default function MediaLibraryPage() {
           }
         }
 
+        if (isOfficeDocument(currentPreviewItem) && !isPdfFile(currentPreviewItem)) {
+          const officePreviewResponse = await fetch(mediaPreviewPdfUrl(currentPreviewItem.id), {
+            credentials: "include",
+            headers,
+            signal: controller.signal
+          });
+
+          if (officePreviewResponse.ok) {
+            const blob = await officePreviewResponse.blob();
+            if (disposed) {
+              return;
+            }
+
+            const objectUrl = URL.createObjectURL(blob);
+            localObjectUrl = objectUrl;
+            setPreviewObjectUrl((current) => {
+              if (current) {
+                URL.revokeObjectURL(current);
+              }
+
+              return objectUrl;
+            });
+            setPreviewBlob(blob);
+            setPreviewMimeType("application/pdf");
+            setPreviewLoading(false);
+            return;
+          }
+        }
+
         const sourceUrl = mediaViewUrl(currentPreviewItem.id);
         const response = await fetch(sourceUrl, {
           credentials: "include",
@@ -741,6 +790,7 @@ export default function MediaLibraryPage() {
         textContent={previewTextContent ?? undefined}
         pdfPageImageUrls={previewPdfPageImageUrls}
         pptxSlideImageUrls={previewSlideImageUrls}
+        allowDownload={false}
       />
     );
   }

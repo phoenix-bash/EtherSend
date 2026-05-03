@@ -4106,34 +4106,122 @@ Node.js v22.22.1
 {"level":30,"time":1777813391416,"pid":92025,"hostname":"Hades","reqId":"req-1p","res":{"statusCode":200},"responseTime":15.111780002713203,"msg":"request completed"}
 {"level":30,"time":1777813411391,"pid":92025,"hostname":"Hades","reqId":"req-1q","req":{"method":"OPTIONS","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":53602},"msg":"incoming request"}
 {"level":30,"time":1777813411392,"pid":92025,"hostname":"Hades","reqId":"req-1q","res":{"statusCode":204},"responseTime":0.4753189980983734,"msg":"request completed"}
-{"level":30,"time":1777813411395,"pid":92025,"hostname":"Hades","reqId":"req-1r","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":42468},"msg":"incoming request"}
-{"level":30,"time":1777813411410,"pid":92025,"hostname":"Hades","reqId":"req-1r","res":{"statusCode":200},"responseTime":15.28550399839878,"msg":"request completed"}
-{"level":30,"time":1777813431390,"pid":92025,"hostname":"Hades","reqId":"req-1s","req":{"method":"OPTIONS","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":53602},"msg":"incoming request"}
-{"level":30,"time":1777813431391,"pid":92025,"hostname":"Hades","reqId":"req-1s","res":{"statusCode":204},"responseTime":0.6648770049214363,"msg":"request completed"}
-{"level":30,"time":1777813431394,"pid":92025,"hostname":"Hades","reqId":"req-1t","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":42468},"msg":"incoming request"}
-{"level":30,"time":1777813431409,"pid":92025,"hostname":"Hades","reqId":"req-1t","res":{"statusCode":200},"responseTime":14.782878004014492,"msg":"request completed"}
-{"level":30,"time":1777813451393,"pid":92025,"hostname":"Hades","reqId":"req-1u","req":{"method":"OPTIONS","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":53602},"msg":"incoming request"}
-{"level":30,"time":1777813451395,"pid":92025,"hostname":"Hades","reqId":"req-1u","res":{"statusCode":204},"responseTime":0.9673670008778572,"msg":"request completed"}
-{"level":30,"time":1777813451398,"pid":92025,"hostname":"Hades","reqId":"req-1v","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":42468},"msg":"incoming request"}
-{"level":30,"time":1777813451413,"pid":92025,"hostname":"Hades","reqId":"req-1v","res":{"statusCode":200},"responseTime":15.344236999750137,"msg":"request completed"}
-{"level":30,"time":1777813471387,"pid":92025,"hostname":"Hades","reqId":"req-1w","req":{"method":"OPTIONS","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":53602},"msg":"incoming request"}
-{"level":30,"time":1777813471388,"pid":92025,"hostname":"Hades","reqId":"req-1w","res":{"statusCode":204},"responseTime":0.4147529974579811,"msg":"request completed"}
-{"level":30,"time":1777813471389,"pid":92025,"hostname":"Hades","reqId":"req-1x","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":42468},"msg":"incoming request"}
-{"level":30,"time":1777813471396,"pid":92025,"hostname":"Hades","reqId":"req-1x","res":{"statusCode":200},"responseTime":6.483506999909878,"msg":"request completed"}
-{"level":30,"time":1777813491390,"pid":92025,"hostname":"Hades","reqId":"req-1y","req":{"method":"OPTIONS","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":53602},"msg":"incoming request"}
-{"level":30,"time":1777813491392,"pid":92025,"hostname":"Hades","reqId":"req-1y","res":{"statusCode":204},"responseTime":0.9480480030179024,"msg":"request completed"}
-{"level":30,"time":1777813491396,"pid":92025,"hostname":"Hades","reqId":"req-1z","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":42468},"msg":"incoming request"}
-{"level":30,"time":1777813491409,"pid":92025,"hostname":"Hades","reqId":"req-1z","res":{"statusCode":200},"responseTime":13.301654003560543,"msg":"request completed"}
-{"level":30,"time":1777813511394,"pid":92025,"hostname":"Hades","reqId":"req-20","req":{"method":"OPTIONS","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":53602},"msg":"incoming request"}
-{"level":30,"time":1777813511395,"pid":92025,"hostname":"Hades","reqId":"req-20","res":{"statusCode":204},"responseTime":0.90259800106287,"msg":"request completed"}
-{"level":30,"time":1777813511400,"pid":92025,"hostname":"Hades","reqId":"req-21","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":42468},"msg":"incoming request"}
-{"level":30,"time":1777813511414,"pid":92025,"hostname":"Hades","reqId":"req-21","res":{"statusCode":200},"responseTime":13.510583996772766,"msg":"request completed"}
-{"level":30,"time":1777813531390,"pid":92025,"hostname":"Hades","reqId":"req-22","req":{"method":"OPTIONS","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":53602},"msg":"incoming request"}
-{"level":30,"time":1777813531391,"pid":92025,"hostname":"Hades","reqId":"req-22","res":{"statusCode":204},"responseTime":0.7060000002384186,"msg":"request completed"}
-{"level":30,"time":1777813531395,"pid":92025,"hostname":"Hades","reqId":"req-23","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":42468},"msg":"incoming request"}
-{"level":30,"time":1777813531411,"pid":92025,"hostname":"Hades","reqId":"req-23","res":{"statusCode":200},"responseTime":15.40081200003624,"msg":"request completed"}
-{"level":30,"time":1777813551389,"pid":92025,"hostname":"Hades","reqId":"req-24","req":{"method":"OPTIONS","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":53602},"msg":"incoming request"}
-{"level":30,"time":1777813551389,"pid":92025,"hostname":"Hades","reqId":"req-24","res":{"statusCode":204},"responseTime":0.5846690014004707,"msg":"request completed"}
+{"level":30,"time":1777813411395,"pid":92025,"hostname":"Hades","reqId":"req-1r","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddr12:57:28 AM [tsx] unlink in ./src/modules/media/routes.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:11:14 AM [tsx] unlink in ./src/app.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:11:25 AM [tsx] unlink in ./src/modules/media/service.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:11:36 AM [tsx] unlink in ./src/modules/v2-upload/service.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:16:21 AM [tsx] unlink in ./src/modules/media/office-preview.service.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+:"Hades","reqId":"req-24","res":{"statusCode":204},"responseTime":0.5846690014004707,"msg":"request completed"}
 {"level":30,"time":1777813551393,"pid":92025,"hostname":"Hades","reqId":"req-25","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":42468},"msg":"incoming request"}
 {"level":30,"time":1777813551405,"pid":92025,"hostname":"Hades","reqId":"req-25","res":{"statusCode":200},"responseTime":11.485936999320984,"msg":"request completed"}
 {"level":30,"time":1777813571393,"pid":92025,"hostname":"Hades","reqId":"req-26","req":{"method":"OPTIONS","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":53602},"msg":"incoming request"}
@@ -4326,34 +4414,122 @@ Node.js v22.22.1
 {"level":30,"time":1777835586352,"pid":92025,"hostname":"Hades","reqId":"req-4r","res":{"statusCode":200},"responseTime":1.1998650059103966,"msg":"request completed"}
 {"level":30,"time":1777835592649,"pid":92025,"hostname":"Hades","reqId":"req-4s","req":{"method":"GET","url":"/health","host":"127.0.0.1:4000","remoteAddress":"127.0.0.1","remotePort":52786},"msg":"incoming request"}
 {"level":30,"time":1777835592650,"pid":92025,"hostname":"Hades","reqId":"req-4s","res":{"statusCode":200},"responseTime":0.5290500000119209,"msg":"request completed"}
-Address":"127.0.0.1","remotePort":60768},"msg":"incoming request"}
-{"level":30,"time":1777803157851,"pid":75205,"hostname":"Hades","reqId":"req-2n","req":{"method":"GET","url":"/media","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51152},"msg":"incoming request"}
-{"level":30,"time":1777803157852,"pid":75205,"hostname":"Hades","reqId":"req-2o","req":{"method":"GET","url":"/batches","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60762},"msg":"incoming request"}
-{"level":30,"time":1777803157853,"pid":75205,"hostname":"Hades","reqId":"req-2m","res":{"statusCode":200},"responseTime":4.751655001193285,"msg":"request completed"}
-{"level":30,"time":1777803157855,"pid":75205,"hostname":"Hades","reqId":"req-2n","res":{"statusCode":200},"responseTime":4.130955997854471,"msg":"request completed"}
-{"level":30,"time":1777803157855,"pid":75205,"hostname":"Hades","reqId":"req-2o","res":{"statusCode":200},"responseTime":3.566355999559164,"msg":"request completed"}
-{"level":30,"time":1777803161513,"pid":75205,"hostname":"Hades","reqId":"req-2p","req":{"method":"GET","url":"/auth/me","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60762},"msg":"incoming request"}
-{"level":30,"time":1777803161516,"pid":75205,"hostname":"Hades","reqId":"req-2q","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51152},"msg":"incoming request"}
-{"level":30,"time":1777803161519,"pid":75205,"hostname":"Hades","reqId":"req-2r","req":{"method":"GET","url":"/media","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60768},"msg":"incoming request"}
-{"level":30,"time":1777803161523,"pid":75205,"hostname":"Hades","reqId":"req-2p","res":{"statusCode":200},"responseTime":9.873760998249054,"msg":"request completed"}
-{"level":30,"time":1777803161525,"pid":75205,"hostname":"Hades","reqId":"req-2r","res":{"statusCode":200},"responseTime":6.274441998451948,"msg":"request completed"}
-{"level":30,"time":1777803161527,"pid":75205,"hostname":"Hades","reqId":"req-2q","res":{"statusCode":200},"responseTime":10.926335003226995,"msg":"request completed"}
-{"level":30,"time":1777803161529,"pid":75205,"hostname":"Hades","reqId":"req-2s","req":{"method":"GET","url":"/auth/me","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51168},"msg":"incoming request"}
-{"level":30,"time":1777803161534,"pid":75205,"hostname":"Hades","reqId":"req-2t","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51152},"msg":"incoming request"}
-{"level":30,"time":1777803161536,"pid":75205,"hostname":"Hades","reqId":"req-2u","req":{"method":"GET","url":"/media","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60768},"msg":"incoming request"}
-{"level":30,"time":1777803161544,"pid":75205,"hostname":"Hades","reqId":"req-2s","res":{"statusCode":200},"responseTime":15.221160002052784,"msg":"request completed"}
-{"level":30,"time":1777803161545,"pid":75205,"hostname":"Hades","reqId":"req-2u","res":{"statusCode":200},"responseTime":9.353025998920202,"msg":"request completed"}
-{"level":30,"time":1777803161549,"pid":75205,"hostname":"Hades","reqId":"req-2t","res":{"statusCode":200},"responseTime":14.727134000509977,"msg":"request completed"}
-{"level":30,"time":1777803166002,"pid":75205,"hostname":"Hades","reqId":"req-2v","req":{"method":"OPTIONS","url":"/auth/me","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51154},"msg":"incoming request"}
-{"level":30,"time":1777803166003,"pid":75205,"hostname":"Hades","reqId":"req-2v","res":{"statusCode":204},"responseTime":0.6847719997167587,"msg":"request completed"}
-{"level":30,"time":1777803166006,"pid":75205,"hostname":"Hades","reqId":"req-2w","req":{"method":"GET","url":"/auth/me","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60768},"msg":"incoming request"}
-{"level":30,"time":1777803166011,"pid":75205,"hostname":"Hades","reqId":"req-2w","res":{"statusCode":200},"responseTime":4.982585001736879,"msg":"request completed"}
-{"level":30,"time":1777803166014,"pid":75205,"hostname":"Hades","reqId":"req-2x","req":{"method":"GET","url":"/auth/me","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51152},"msg":"incoming request"}
-{"level":30,"time":1777803166026,"pid":75205,"hostname":"Hades","reqId":"req-2x","res":{"statusCode":200},"responseTime":12.48692899942398,"msg":"request completed"}
-{"level":30,"time":1777803166052,"pid":75205,"hostname":"Hades","reqId":"req-2y","req":{"method":"GET","url":"/auth/me","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51152},"msg":"incoming request"}
-{"level":30,"time":1777803166054,"pid":75205,"hostname":"Hades","reqId":"req-2z","req":{"method":"OPTIONS","url":"/media","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51154},"msg":"incoming request"}
-{"level":30,"time":1777803166054,"pid":75205,"hostname":"Hades","reqId":"req-2z","res":{"statusCode":204},"responseTime":0.29981299862265587,"msg":"request completed"}
-{"level":30,"time":1777803166054,"pid":75205,"hostname":"Hades","reqId":"req-30","req":{"method":"OPTIONS","url":"/batches","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":51140},"msg":"incoming request"}
+12:57:28 AM [tsx] unlink in ./src/modules/media/routes.ts Restarting...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:11:14 AM [tsx] unlink in ./src/app.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:11:25 AM [tsx] unlink in ./src/modules/media/service.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:11:36 AM [tsx] unlink in ./src/modules/v2-upload/service.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:16:21 AM [tsx] unlink in ./src/modules/media/office-preview.service.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+40},"msg":"incoming request"}
 {"level":30,"time":1777803166054,"pid":75205,"hostname":"Hades","reqId":"req-30","res":{"statusCode":204},"responseTime":0.20208600163459778,"msg":"request completed"}
 {"level":30,"time":1777803166056,"pid":75205,"hostname":"Hades","reqId":"req-31","req":{"method":"OPTIONS","url":"/media","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60748},"msg":"incoming request"}
 {"level":30,"time":1777803166056,"pid":75205,"hostname":"Hades","reqId":"req-31","res":{"statusCode":204},"responseTime":0.27909399941563606,"msg":"request completed"}
@@ -6663,3 +6839,118 @@ Node.js v22.22.1
 6:30:53 PM [tsx] change in ./src/app.ts Rerunning...
 c{"level":30,"time":1777813256266,"pid":92024,"hostname":"Hades","intervalSeconds":120,"msg":"Recurring cleanup scheduler ensured"}
 {"level":50,"time":1777813256275,"pid":92024,"hostname":"Hades","err":{"type":"Error","message":"listen EADDRINUSE: address already in use 0.0.0.0:4000","stack":"Error: listen EADDRINUSE: address already in use 0.0.0.0:4000\n    at Server.setupListenHandle [as _listen2] (node:net:1934:16)\n    at listenInCluster (node:net:1991:12)\n    at node:net:2200:7\n    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)","code":"EADDRINUSE","errno":-98,"syscall":"listen","address":"0.0.0.0","port":4000},"msg":"listen EADDRINUSE: address already in use 0.0.0.0:4000"}
+12:57:28 AM [tsx] unlink in ./src/modules/media/routes.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:11:14 AM [tsx] unlink in ./src/app.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:11:25 AM [tsx] unlink in ./src/modules/media/service.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:11:36 AM [tsx] unlink in ./src/modules/v2-upload/service.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1
+1:16:21 AM [tsx] unlink in ./src/modules/media/office-preview.service.ts Rerunning...
+cnode:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/phoenix/LinkForge/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/preflight.cjs'
+Require stack:
+- internal/preload
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at Module._preloadModules (node:internal/modules/cjs/loader:2008:12)
+    at loadPreloadModules (node:internal/process/pre_execution:756:5)
+    at setupUserModules (node:internal/process/pre_execution:231:5) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'internal/preload' ]
+}
+
+Node.js v22.22.1

@@ -66,13 +66,18 @@ export class OfficePreviewService {
     if (
       mime.includes("application/msword") ||
       mime.includes("application/vnd.ms-") ||
-      mime.includes("application/vnd.openxmlformats-officedocument")
+      mime.includes("application/vnd.openxmlformats-officedocument") ||
+      mime.includes("application/vnd.oasis.opendocument")
     ) {
       return true;
     }
 
+    if (mime === "text/plain" || mime === "text/html") {
+      return true;
+    }
+
     const extension = (media.extension || extname(media.filename).replace(".", "")).toLowerCase();
-    return ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "pps", "ppsx"].includes(extension);
+    return ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "pps", "ppsx", "odt", "ods", "odp", "txt", "html", "htm"].includes(extension);
   }
 
   async ensurePdfPreview(media: Pick<MediaFile, "id" | "filename" | "extension" | "mimeType" | "storagePath" | "updatedAt">): Promise<NodeJS.ReadableStream> {

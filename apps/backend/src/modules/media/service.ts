@@ -6,6 +6,7 @@ import { lookup as lookupMime } from "mime-types";
 import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
 import { LocalStorageProvider } from "../../providers/storage/local-storage.provider.js";
+import { enqueueDocumentConversion } from "../../queues/document-conversion-queue.js";
 import { HttpError } from "../../utils/http-error.js";
 import { GuestService } from "../guest/service.js";
 import { MediaRepository } from "./repository.js";
@@ -145,6 +146,10 @@ export class MediaService {
       mimeType: String(mimeType)
     });
 
+    void enqueueDocumentConversion(created.id, "upload").catch(() => {
+      // Keep upload path non-blocking.
+    });
+
     return created;
   }
 
@@ -175,12 +180,18 @@ export class MediaService {
       await this.assertSignedInCanStore(media.userId, fileBytes, media.id);
     }
 
-    return this.repository.updateContent(mediaId, {
+    const updated = await this.repository.updateContent(mediaId, {
       storagePath,
       sizeBytes: BigInt(fileBytes),
       mimeType: file.mimetype || media.mimeType,
       filename: file.filename || media.filename,
       extension
     });
+
+    void enqueueDocumentConversion(updated.id, "upload").catch(() => {
+      // Keep replace path non-blocking.
+    });
+
+    return updated;
   }
 }

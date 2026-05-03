@@ -4,6 +4,7 @@ import type { CompletedPart } from "@aws-sdk/client-s3";
 import type { MediaFile, OwnerType } from "@prisma/client";
 import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
+import { enqueueDocumentConversion } from "../../queues/document-conversion-queue.js";
 import { HttpError } from "../../utils/http-error.js";
 import { GuestService } from "../guest/service.js";
 import { MediaRepository } from "../media/repository.js";
@@ -244,6 +245,11 @@ export class V2UploadService {
 
     if (upload.status === "COMPLETED") {
       const media = (await this.mediaRepository.findById(upload.fileId)) ?? (await this.ensureMediaRecordForCompletedUpload(upload, actor));
+      if (media) {
+        void enqueueDocumentConversion(media.id, "upload").catch(() => {
+          // Keep completion path non-blocking.
+        });
+      }
       return {
         success: true,
         fileId: upload.fileId,
@@ -284,6 +290,9 @@ export class V2UploadService {
     const fileUrl = this.s3Service.buildObjectUrl(upload.s3Key);
     const completed = await this.repository.markCompleted(upload.fileId, payload.parts ?? [], fileUrl);
     const media = await this.ensureMediaRecordForCompletedUpload(completed, actor);
+    void enqueueDocumentConversion(media.id, "upload").catch(() => {
+      // Keep completion path non-blocking.
+    });
 
     return {
       success: true,

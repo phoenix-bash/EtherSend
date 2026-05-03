@@ -17,6 +17,7 @@ import { registerCleanupRoutes } from "./modules/cleanup/routes.js";
 import { registerDominatorRoutes } from "./modules/dominator/routes.js";
 import { registerV2UploadRoutes } from "./modules/v2-upload/routes.js";
 import { scheduleRecurringCleanup } from "./queues/cleanup-queue.js";
+import { createDocumentConversionWorker } from "./queues/document-conversion-queue.js";
 
 function isLoopbackHostname(hostname: string): boolean {
   const normalized = hostname.toLowerCase();
@@ -103,10 +104,15 @@ function isStateChangingMethod(method: string): boolean {
 }
 
 export async function buildApp(): Promise<FastifyInstance> {
-  const app = fastify({
-    logger: {
-      level: env.NODE_ENV === "production" ? "info" : "debug"
-    }
+  const app = fastify({ logger: true });
+  const documentConversionWorker = createDocumentConversionWorker();
+
+  documentConversionWorker.on("completed", (job, result) => {
+    app.log.info({ jobId: job.id, mediaId: job.data.mediaId, result }, "Document conversion job completed");
+  });
+
+  documentConversionWorker.on("failed", (job, error) => {
+    app.log.error({ jobId: job?.id, mediaId: job?.data.mediaId, err: error }, "Document conversion job failed");
   });
 
   await app.register(cors, {
@@ -282,6 +288,10 @@ export async function buildApp(): Promise<FastifyInstance> {
       error: errorMessage,
       requestId: request.id
     });
+  });
+
+  app.addHook("onClose", async () => {
+    await documentConversionWorker.close();
   });
 
   return app;

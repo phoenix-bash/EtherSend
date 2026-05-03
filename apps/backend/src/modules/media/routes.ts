@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { MediaFile } from "@prisma/client";
 import { z } from "zod";
+import { enqueueDocumentConversion, documentConversionQueue } from "../../queues/document-conversion-queue.js";
 import { requireAuth } from "../../middlewares/auth.js";
 import { ensureGuestSession } from "../../middlewares/guest-session.js";
 import { enforceMediaAccess } from "../../middlewares/access-control.js";
@@ -34,6 +35,11 @@ const mediaSlideParamSchema = z.object({
 const mediaPdfPageParamSchema = z.object({
   mediaId: z.string().uuid(),
   pageFileName: z.string().min(1)
+});
+
+const mediaConversionJobParamSchema = z.object({
+  mediaId: z.string().uuid(),
+  jobId: z.string().min(1)
 });
 
 function serializeMedia(media: MediaFile) {
@@ -111,6 +117,76 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
       const guestSessionId = userId ? undefined : String(request.headers["x-guest-session-id"] || "");
       const media = await service.upload({ file: part, userId, guestSessionId });
       return reply.status(201).send({ media: serializeMedia(media) });
+    }
+  );
+
+  app.post(
+    "/m/:mediaId/conversion/enqueue",
+    {
+      preHandler: [ensureGuestSession],
+      config: {
+        rateLimit: {
+          max: 20,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const mediaIdResult = mediaIdParamSchema.safeParse(request.params);
+      if (!mediaIdResult.success) {
+        return reply.status(400).send({ error: "Invalid media id" });
+      }
+
+      const mediaId = mediaIdResult.data.mediaId;
+      await enforceMediaAccess(mediaId, "view");
+
+      const media = await new MediaRepository().findById(mediaId);
+      if (!media) {
+        return reply.status(404).send({ error: "Not found" });
+      }
+
+      const jobId = await enqueueDocumentConversion(mediaId, "manual");
+      return reply.status(202).send({
+        mediaId,
+        jobId,
+        status: "queued"
+      });
+    }
+  );
+
+  app.get(
+    "/m/:mediaId/conversion/jobs/:jobId",
+    {
+      preHandler: [ensureGuestSession],
+      config: {
+        rateLimit: {
+          max: 60,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const parseResult = mediaConversionJobParamSchema.safeParse(request.params);
+      if (!parseResult.success) {
+        return reply.status(400).send({ error: "Invalid conversion job path" });
+      }
+
+      const { mediaId, jobId } = parseResult.data;
+      await enforceMediaAccess(mediaId, "view");
+
+      const job = await documentConversionQueue.getJob(jobId);
+      if (!job || job.data.mediaId !== mediaId) {
+        return reply.status(404).send({ error: "Conversion job not found" });
+      }
+
+      const state = await job.getState();
+      return reply.send({
+        mediaId,
+        jobId,
+        state,
+        result: job.returnvalue ?? null,
+        failedReason: job.failedReason ?? null
+      });
     }
   );
 
@@ -318,7 +394,7 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(404).send({ error: "Not found" });
       }
 
-      const pages = await pdfPagePreviewService.ensurePagePreview(media);
+      const pages = await pdfPagePreviewService.ensurePagePreview(media).catch(() => [] as string[]);
       return reply.send({
         pages: pages.map((fileName) => `/m/${mediaId}/pdf-pages/${encodeURIComponent(fileName)}`)
       });
@@ -378,7 +454,7 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(404).send({ error: "Not found" });
       }
 
-      const slides = await pptxSlidePreviewService.ensureSlidePreview(media);
+      const slides = await pptxSlidePreviewService.ensureSlidePreview(media).catch(() => [] as string[]);
       return reply.send({
         slides: slides.map((fileName) => `/m/${mediaId}/slides/${encodeURIComponent(fileName)}`)
       });
