@@ -1,40 +1,17 @@
-FROM node:24-bookworm-slim AS builder
-
-ENV HOME=/tmp
-ENV PNPM_HOME=/pnpm
-ENV PATH=$PNPM_HOME:$PATH
-
-RUN corepack enable
-
-WORKDIR /app
-
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/backend/package.json apps/backend/package.json
-
-COPY packages/shared/package.json packages/shared/package.json
-
-RUN pnpm install --frozen-lockfile
-
-COPY apps/backend ./apps/backend
-COPY packages/shared ./packages/shared
-
-RUN pnpm --filter @linkforge/backend prisma:generate
-RUN pnpm --filter @linkforge/backend build
-
-
 FROM node:24-bookworm-slim AS runner
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV NODE_ENV=production
+ENV HOME=/tmp
 
 RUN corepack enable
 
-# install runtime deps ONLY here
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice \
     fonts-dejavu \
     poppler-utils \
+    openssl \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -48,8 +25,5 @@ RUN pnpm install --prod --frozen-lockfile
 COPY --from=builder /app/apps/backend ./apps/backend
 RUN pnpm --filter @linkforge/backend prisma:generate
 
-COPY --from=builder /app/apps/backend ./apps/backend
-
 EXPOSE 4000
-
 CMD ["pnpm", "--filter", "@linkforge/backend", "start"]
