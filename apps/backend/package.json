@@ -17,6 +17,8 @@
     "prisma:deploy": "prisma migrate deploy"
   },
   "dependencies": {
+    "@types/mime-types": "^2.1.4",
+    "@types/node": "^22.13.10",
     "@aws-sdk/client-s3": "^3.884.0",
     "@aws-sdk/s3-request-presigner": "^3.884.0",
     "@fastify/cookie": "^10.0.1",
