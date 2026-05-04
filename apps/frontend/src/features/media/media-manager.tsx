@@ -26,6 +26,7 @@ import { copyTextToClipboard } from "../../lib/clipboard";
 import { MEDIA_LIBRARY_CHANGED_EVENT, MEDIA_UPLOADED_EVENT, SIGNED_OUT_EVENT, SYSTEM_LOG_EVENT, type SystemLogLevel } from "../../lib/events";
 import { useAuthSession } from "../../hooks/use-auth-session";
 import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
+import { clearPreviewPagesCacheForFile, createPreviewPagesCacheKey, loadPreviewPagesWithCache } from "../../lib/preview-page-cache";
 import { createPortal } from "react-dom";
 import { FileViewer } from "../../components/file-viewer";
 
@@ -385,6 +386,8 @@ export function MediaManager() {
   async function openPreview(item: MediaItem): Promise<void> {
     const sourceUrl = mediaViewUrl(item.id);
     const pdfFile = isPdfFile(item.mimeType, item.filename);
+    const mobilePdfPagesCacheKey = createPreviewPagesCacheKey("media-manager-pdf-pages", item.id);
+    const officePagesCacheKey = createPreviewPagesCacheKey("media-manager-office-pages", item.id);
     const token = getAccessToken();
     const headers: Record<string, string> = {};
     if (token) {
@@ -404,34 +407,20 @@ export function MediaManager() {
 
     try {
       if (isMobileDevice() && pdfFile) {
-        const pagesResponse = await fetch(mediaPdfPagesUrl(item.id), { credentials: "include", headers });
-        if (pagesResponse.ok) {
-          const payload = (await pagesResponse.json()) as { pages?: string[] };
-          const pageUrls = (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
+        const pageUrls = await loadPreviewPagesWithCache({
+          cacheKey: mobilePdfPagesCacheKey,
+          fetcher: async () => {
+            const pagesResponse = await fetch(mediaPdfPagesUrl(item.id), { credentials: "include", headers });
+            if (!pagesResponse.ok) {
+              throw new Error(`Preview request failed with status ${pagesResponse.status}`);
+            }
 
-          if (pageUrls.length > 0) {
-            setPreview((current) => {
-              if (!current || current.sourceUrl !== sourceUrl) {
-                return current;
-              }
-
-              return {
-                ...current,
-                mimeType: "application/pdf",
-                pdfPageImageUrls: pageUrls,
-                loading: false
-              };
-            });
-            return;
+            const payload = (await pagesResponse.json()) as { pages?: string[] };
+            return (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
           }
-        }
-      }
+        });
 
-      if (isOfficeDocument(item.mimeType, item.filename) && !pdfFile) {
-        const officePreviewResponse = await fetch(mediaOfficePagesUrl(item.id), { credentials: "include", headers });
-        if (officePreviewResponse.ok) {
-          const payload = (await officePreviewResponse.json()) as { success?: boolean; pages?: string[] };
-          const pageUrls = (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
+        if (pageUrls.length > 0) {
           setPreview((current) => {
             if (!current || current.sourceUrl !== sourceUrl) {
               return current;
@@ -441,13 +430,42 @@ export function MediaManager() {
               ...current,
               mimeType: "application/pdf",
               pdfPageImageUrls: pageUrls,
-              objectUrl: undefined,
-              blob: undefined,
               loading: false
             };
           });
           return;
         }
+      }
+
+      if (isOfficeDocument(item.mimeType, item.filename) && !pdfFile) {
+        const pageUrls = await loadPreviewPagesWithCache({
+          cacheKey: officePagesCacheKey,
+          fetcher: async () => {
+            const officePreviewResponse = await fetch(mediaOfficePagesUrl(item.id), { credentials: "include", headers });
+            if (!officePreviewResponse.ok) {
+              throw new Error(`Preview request failed with status ${officePreviewResponse.status}`);
+            }
+
+            const payload = (await officePreviewResponse.json()) as { success?: boolean; pages?: string[] };
+            return (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
+          }
+        });
+
+        setPreview((current) => {
+          if (!current || current.sourceUrl !== sourceUrl) {
+            return current;
+          }
+
+          return {
+            ...current,
+            mimeType: "application/pdf",
+            pdfPageImageUrls: pageUrls,
+            objectUrl: undefined,
+            blob: undefined,
+            loading: false
+          };
+        });
+        return;
       }
 
       const response = await fetch(sourceUrl, { credentials: "include", headers });
@@ -582,6 +600,7 @@ export function MediaManager() {
   async function removeItem(item: MediaItem): Promise<void> {
     try {
       await deleteMedia(item.id);
+      clearPreviewPagesCacheForFile(item.id);
       setSelectedIds((prev) => prev.filter((id) => id !== item.id));
       await refreshMedia();
       emitLibraryChange();
@@ -598,6 +617,7 @@ export function MediaManager() {
 
     try {
       await replaceMedia(selectedReplaceId, file);
+      clearPreviewPagesCacheForFile(selectedReplaceId);
       setSelectedReplaceId(null);
       await refreshMedia();
       emitLibraryChange();
@@ -1473,6 +1493,7 @@ export function MediaManager() {
                 <div className="flex items-center justify-between border-b border-outline-variant/15 px-4 py-3">
                   <div>
                     <p className="text-sm font-medium text-on-surface">Preview: {preview.fileName}</p>
+                    <p className="mt-1 text-[11px] text-on-surface-variant">Please be patient. Free tier preview generation can take some time.</p>
                   </div>
                   <button
                     type="button"

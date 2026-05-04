@@ -1,3 +1,5 @@
+import { clearAllPreviewPagesCache } from "./preview-page-cache";
+
 function trimTrailingSlashes(value: string): string {
   return value.replace(/\/+$/, "");
 }
@@ -1066,6 +1068,7 @@ export async function logoutSession(): Promise<void> {
   } catch {
     // Local sign-out should proceed even if API logout fails.
   } finally {
+    clearAllPreviewPagesCache();
     clearAccessToken();
   }
 }

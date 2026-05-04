@@ -14,6 +14,7 @@ import {
   resolveSecurityTeaseMessage,
   type PublicBatchShare
 } from "../../../lib/api-client";
+import { clearPreviewPagesCacheByScope, createPreviewPagesCacheKey, loadPreviewPagesWithCache } from "../../../lib/preview-page-cache";
 import { formatDateTimeDdMmYyyyHm } from "../../../lib/utils";
 
 interface SharePageClientProps {
@@ -267,6 +268,7 @@ export function SharePageClient({ token }: SharePageClientProps) {
   }
 
   function triggerSecurityLock(reason: string): void {
+    clearPreviewPagesCacheByScope(`share:${token}`);
     setPreview((current) => {
       revokePreviewUrl(current?.objectUrl);
       return null;
@@ -289,6 +291,7 @@ export function SharePageClient({ token }: SharePageClientProps) {
   async function openPreview(file: { filename: string; mimeType: string; id: string }): Promise<void> {
     const sourceUrl = absoluteApiUrl(shareFilePath(token, file.id, "view"));
     const visibleFileName = hideFilenames ? "Filename hidden" : file.filename;
+    const officePagesCacheKey = createPreviewPagesCacheKey(`share:${token}:office-pages`, file.id);
 
     setPreview((current) => {
       revokePreviewUrl(current?.objectUrl);
@@ -304,29 +307,36 @@ export function SharePageClient({ token }: SharePageClientProps) {
 
     try {
       if (isOfficeDocument(file) && !isPdfFile(file)) {
-        const officePreviewResponse = await fetch(absoluteApiUrl(shareFileOfficePagesPath(token, file.id)), {
-          credentials: "include",
-          headers: buildPreviewHeaders()
-        });
+        const pageUrls = await loadPreviewPagesWithCache({
+          cacheKey: officePagesCacheKey,
+          fetcher: async () => {
+            const officePreviewResponse = await fetch(absoluteApiUrl(shareFileOfficePagesPath(token, file.id)), {
+              credentials: "include",
+              headers: buildPreviewHeaders()
+            });
 
-        if (officePreviewResponse.ok) {
-          const payload = (await officePreviewResponse.json()) as { success?: boolean; pages?: string[] };
-          const pageUrls = (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
-
-          setPreview((current) => {
-            if (!current || current.sourceUrl !== sourceUrl) {
-              return current;
+            if (!officePreviewResponse.ok) {
+              throw new Error(`Preview request failed with status ${officePreviewResponse.status}`);
             }
 
-            return {
-              ...current,
-              mimeType: "application/pdf",
-              pdfPageImageUrls: pageUrls,
-              loading: false
-            };
-          });
-          return;
-        }
+            const payload = (await officePreviewResponse.json()) as { success?: boolean; pages?: string[] };
+            return (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
+          }
+        });
+
+        setPreview((current) => {
+          if (!current || current.sourceUrl !== sourceUrl) {
+            return current;
+          }
+
+          return {
+            ...current,
+            mimeType: "application/pdf",
+            pdfPageImageUrls: pageUrls,
+            loading: false
+          };
+        });
+        return;
       }
 
       const response = await fetch(sourceUrl, { credentials: "include", headers: buildPreviewHeaders() });
@@ -470,11 +480,13 @@ export function SharePageClient({ token }: SharePageClientProps) {
           }
 
           if (error.status === 410) {
+            clearPreviewPagesCacheByScope(`share:${token}`);
             setStatus("This share link has expired.");
             return;
           }
         }
 
+        clearPreviewPagesCacheByScope(`share:${token}`);
         setStatus("Share link is invalid or unavailable.");
       } finally {
         setIsUnlocking(false);
@@ -753,6 +765,7 @@ export function SharePageClient({ token }: SharePageClientProps) {
               <div className="flex items-center justify-between border-b border-outline-variant/15 px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-on-surface">Preview: {preview.fileName}</p>
+                  <p className="mt-1 text-[11px] text-on-surface-variant">Please be patient. Free tier preview generation can take some time.</p>
                 </div>
                 <button
                   type="button"
