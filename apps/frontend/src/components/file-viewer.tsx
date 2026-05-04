@@ -237,7 +237,7 @@ export function FileViewer({
 
   if (kind === "pdf") {
     const pageImages = pdfPageImageUrls ?? [];
-    if (isMobile && pageImages.length > 0) {
+    if (pageImages.length > 0) {
       return (
         <div className="h-full w-full space-y-3 overflow-auto rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-3">
           {pageImages.map((pageUrl, index) => (
