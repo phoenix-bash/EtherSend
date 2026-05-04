@@ -6,13 +6,13 @@ import { LocalStorageProvider } from "../../providers/storage/local-storage.prov
 import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
 import { HttpError } from "../../utils/http-error.js";
-import { OfficePreviewService } from "../media/office-preview.service.js";
+import { ConvertioPreviewService } from "../media/convertio-preview.service.js";
 import { BatchRepository } from "./repository.js";
 import { type BatchActor, BatchService } from "./service.js";
 
 const service = new BatchService(new BatchRepository(), getShareEmailProvider());
 const storage = new LocalStorageProvider();
-const officePreviewService = new OfficePreviewService();
+const convertioPreviewService = new ConvertioPreviewService();
 
 const createBatchSchema = z.object({
   mediaIds: z.array(z.string().uuid()).min(1).max(200),
@@ -423,7 +423,7 @@ export async function registerBatchRoutes(app: FastifyInstance): Promise<void> {
   );
 
   app.get(
-    "/shares/:token/files/:mediaId/preview.pdf",
+    "/shares/:token/files/:mediaId/office-pages",
     {
       config: {
         rateLimit: {
@@ -446,17 +446,60 @@ export async function registerBatchRoutes(app: FastifyInstance): Promise<void> {
       const { token, mediaId } = paramsResult.data;
       const providedPassword = String(request.headers["x-share-password"] ?? "");
       const trackPreviewView = String(request.headers["x-share-preview-intent"] ?? "") === "1";
-      const { media, hideFilenames } = await service.resolveSharedMedia(token, mediaId, "view", providedPassword || undefined, {
+      const { media } = await service.resolveSharedMedia(token, mediaId, "view", providedPassword || undefined, {
         trackPreviewView,
         ipAddress: request.ip,
         userAgent: String(request.headers["user-agent"] ?? "") || undefined
       });
-      const previewStream = await officePreviewService.ensurePdfPreview(media);
-      const filenameWithoutExt = hideFilenames ? "shared-file" : media.filename.replace(/\.[^./\\]+$/, "") || "document";
 
-      reply.header("Content-Type", "application/pdf");
-      reply.header("Content-Disposition", `inline; filename=\"${filenameWithoutExt}.pdf\"`);
-      return reply.send(previewStream);
+      const pages = await convertioPreviewService.ensureOfficePagePreview(media);
+      return reply.send({
+        success: true,
+        pages: pages.map((fileName) => `/shares/${token}/files/${mediaId}/office-pages/${encodeURIComponent(fileName)}`)
+      });
+    }
+  );
+
+  app.get(
+    "/shares/:token/files/:mediaId/office-pages/:pageFileName",
+    {
+      config: {
+        rateLimit: {
+          max: 50,
+          timeWindow: "1 minute",
+          keyGenerator: (request: { ip: string; params: unknown; headers: Record<string, unknown> }) => {
+            const token = String((request.params as { token?: string })?.token ?? "");
+            const hasPasswordHeader = String(request.headers["x-share-password"] ?? "").length > 0;
+            return `${request.ip}:${token}:preview-file:${hasPasswordHeader ? "pwd" : "nopwd"}`;
+          }
+        }
+      }
+    },
+    async (request, reply) => {
+      const parseResult = z
+        .object({
+          token: z.string().length(32).regex(/^[A-Fa-f0-9]+$/),
+          mediaId: z.string().uuid(),
+          pageFileName: z.string().min(1)
+        })
+        .safeParse(request.params);
+      if (!parseResult.success) {
+        return reply.status(400).send({ error: "Invalid shared page path" });
+      }
+
+      const { token, mediaId, pageFileName } = parseResult.data;
+      const providedPassword = String(request.headers["x-share-password"] ?? "");
+      const trackPreviewView = String(request.headers["x-share-preview-intent"] ?? "") === "1";
+      const { media } = await service.resolveSharedMedia(token, mediaId, "view", providedPassword || undefined, {
+        trackPreviewView,
+        ipAddress: request.ip,
+        userAgent: String(request.headers["user-agent"] ?? "") || undefined
+      });
+
+      const page = await convertioPreviewService.openPageStream(media, pageFileName);
+      reply.header("Content-Type", page.contentType);
+      reply.header("Content-Disposition", `inline; filename=\"${pageFileName}\"`);
+      return reply.send(page.stream);
     }
   );
 

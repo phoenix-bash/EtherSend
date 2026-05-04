@@ -12,9 +12,9 @@ import {
   deleteMedia,
   getAccessToken,
   listMedia,
+  mediaOfficePagesUrl,
+  mediaDownloadUrl,
   mediaPdfPagesUrl,
-  mediaPreviewPdfUrl,
-  mediaPptxSlidesUrl,
   mediaViewUrl,
   replaceMedia,
   sendBatchShareEmail,
@@ -44,7 +44,6 @@ interface PreviewState {
   blob?: Blob;
   textContent?: string;
   pdfPageImageUrls?: string[];
-  pptxSlideImageUrls?: string[];
   loading: boolean;
   error?: string;
 }
@@ -171,19 +170,6 @@ function hasTextPreviewExtension(fileName: string): boolean {
   }
 
   return TEXT_FILE_EXTENSIONS.has(normalized.slice(dotIndex + 1));
-}
-
-function isPptxFile(mimeType: string, fileName: string): boolean {
-  const normalizedMime = mimeType.toLowerCase();
-  if (
-    normalizedMime === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
-    normalizedMime === "application/vnd.ms-powerpoint"
-  ) {
-    return true;
-  }
-
-  const normalizedFileName = fileName.trim().toLowerCase();
-  return normalizedFileName.endsWith(".pptx") || normalizedFileName.endsWith(".ppt");
 }
 
 function isPdfFile(mimeType: string, fileName: string): boolean {
@@ -398,7 +384,6 @@ export function MediaManager() {
 
   async function openPreview(item: MediaItem): Promise<void> {
     const sourceUrl = mediaViewUrl(item.id);
-    const pptxFile = isPptxFile(item.mimeType, item.filename);
     const pdfFile = isPdfFile(item.mimeType, item.filename);
     const token = getAccessToken();
     const headers: Record<string, string> = {};
@@ -418,31 +403,6 @@ export function MediaManager() {
     });
 
     try {
-      if (pptxFile) {
-        const slidesResponse = await fetch(mediaPptxSlidesUrl(item.id), { credentials: "include", headers });
-        if (slidesResponse.ok) {
-          const payload = (await slidesResponse.json()) as { slides?: string[] };
-          const slideUrls = (payload.slides ?? []).map((slidePath) => absoluteApiUrl(slidePath));
-
-          if (slideUrls.length > 0) {
-            setPreview((current) => {
-              if (!current || current.sourceUrl !== sourceUrl) {
-                return current;
-              }
-
-              return {
-                ...current,
-                mimeType: item.mimeType,
-                pptxSlideImageUrls: slideUrls,
-                pdfPageImageUrls: undefined,
-                loading: false
-              };
-            });
-            return;
-          }
-        }
-      }
-
       if (isMobileDevice() && pdfFile) {
         const pagesResponse = await fetch(mediaPdfPagesUrl(item.id), { credentials: "include", headers });
         if (pagesResponse.ok) {
@@ -467,22 +427,22 @@ export function MediaManager() {
         }
       }
 
-      if (isOfficeDocument(item.mimeType, item.filename) && !pdfFile && !pptxFile) {
-        const officePreviewResponse = await fetch(mediaPreviewPdfUrl(item.id), { credentials: "include", headers });
+      if (isOfficeDocument(item.mimeType, item.filename) && !pdfFile) {
+        const officePreviewResponse = await fetch(mediaOfficePagesUrl(item.id), { credentials: "include", headers });
         if (officePreviewResponse.ok) {
-          const blob = await officePreviewResponse.blob();
-          const objectUrl = URL.createObjectURL(blob);
+          const payload = (await officePreviewResponse.json()) as { success?: boolean; pages?: string[] };
+          const pageUrls = (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
           setPreview((current) => {
             if (!current || current.sourceUrl !== sourceUrl) {
-              URL.revokeObjectURL(objectUrl);
               return current;
             }
 
             return {
               ...current,
               mimeType: "application/pdf",
-              blob,
-              objectUrl,
+              pdfPageImageUrls: pageUrls,
+              objectUrl: undefined,
+              blob: undefined,
               loading: false
             };
           });
@@ -1540,7 +1500,6 @@ export function MediaManager() {
                       blob={preview.blob}
                       textContent={preview.textContent}
                       pdfPageImageUrls={preview.pdfPageImageUrls}
-                      pptxSlideImageUrls={preview.pptxSlideImageUrls}
                       allowDownload={false}
                     />
                   )}

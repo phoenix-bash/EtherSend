@@ -10,10 +10,9 @@ import {
   deleteMedia,
   getAccessToken,
   listMedia,
+  mediaOfficePagesUrl,
   mediaDownloadUrl,
   mediaPdfPagesUrl,
-  mediaPreviewPdfUrl,
-  mediaPptxSlidesUrl,
   mediaViewUrl,
   replaceMedia,
   toggleMedia,
@@ -140,16 +139,6 @@ function hasTextPreviewExtension(fileName: string): boolean {
   }
 
   return TEXT_FILE_EXTENSIONS.has(normalized.slice(dotIndex + 1));
-}
-
-function isPptxFile(item: Pick<MediaItem, "mimeType" | "filename" | "extension">): boolean {
-  const mime = item.mimeType.toLowerCase();
-  if (mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation" || mime === "application/vnd.ms-powerpoint") {
-    return true;
-  }
-
-  const extension = (item.extension || item.filename.split(".").pop() || "").toLowerCase();
-  return extension === "pptx" || extension === "ppt";
 }
 
 function isPdfFile(item: Pick<MediaItem, "mimeType" | "filename" | "extension">): boolean {
@@ -283,7 +272,6 @@ export default function MediaLibraryPage() {
   const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-  const [previewSlideImageUrls, setPreviewSlideImageUrls] = useState<string[]>([]);
   const [previewPdfPageImageUrls, setPreviewPdfPageImageUrls] = useState<string[]>([]);
   const [previewTextContent, setPreviewTextContent] = useState<string | null>(null);
   const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
@@ -401,7 +389,6 @@ export default function MediaLibraryPage() {
         return null;
       });
       setPreviewBlob(null);
-      setPreviewSlideImageUrls([]);
       setPreviewPdfPageImageUrls([]);
       setPreviewTextContent(null);
       setPreviewMimeType(null);
@@ -424,7 +411,6 @@ export default function MediaLibraryPage() {
       return null;
     });
     setPreviewBlob(null);
-    setPreviewSlideImageUrls([]);
     setPreviewPdfPageImageUrls([]);
     setPreviewTextContent(null);
     setPreviewMimeType(currentPreviewItem.mimeType);
@@ -437,29 +423,6 @@ export default function MediaLibraryPage() {
         const headers: Record<string, string> = {};
         if (token) {
           headers.Authorization = `Bearer ${token}`;
-        }
-
-        if (isPptxFile(currentPreviewItem)) {
-          const slidesResponse = await fetch(mediaPptxSlidesUrl(currentPreviewItem.id), {
-            credentials: "include",
-            headers,
-            signal: controller.signal
-          });
-
-          if (slidesResponse.ok) {
-            const payload = (await slidesResponse.json()) as { slides?: string[] };
-            if (disposed) {
-              return;
-            }
-
-            const slideUrls = (payload.slides ?? []).map((slidePath) => absoluteApiUrl(slidePath));
-            if (slideUrls.length > 0) {
-              setPreviewSlideImageUrls(slideUrls);
-              setPreviewMimeType(currentPreviewItem.mimeType);
-              setPreviewLoading(false);
-              return;
-            }
-          }
         }
 
         if (isMobileDevice() && isPdfFile(currentPreviewItem)) {
@@ -485,29 +448,21 @@ export default function MediaLibraryPage() {
           }
         }
 
-        if (isOfficeDocument(currentPreviewItem) && !isPdfFile(currentPreviewItem) && !isPptxFile(currentPreviewItem)) {
-          const officePreviewResponse = await fetch(mediaPreviewPdfUrl(currentPreviewItem.id), {
+        if (isOfficeDocument(currentPreviewItem) && !isPdfFile(currentPreviewItem)) {
+          const officePreviewResponse = await fetch(mediaOfficePagesUrl(currentPreviewItem.id), {
             credentials: "include",
             headers,
             signal: controller.signal
           });
 
           if (officePreviewResponse.ok) {
-            const blob = await officePreviewResponse.blob();
+            const payload = (await officePreviewResponse.json()) as { success?: boolean; pages?: string[] };
             if (disposed) {
               return;
             }
 
-            const objectUrl = URL.createObjectURL(blob);
-            localObjectUrl = objectUrl;
-            setPreviewObjectUrl((current) => {
-              if (current) {
-                URL.revokeObjectURL(current);
-              }
-
-              return objectUrl;
-            });
-            setPreviewBlob(blob);
+            const pageUrls = (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
+            setPreviewPdfPageImageUrls(pageUrls);
             setPreviewMimeType("application/pdf");
             setPreviewLoading(false);
             return;
@@ -789,7 +744,6 @@ export default function MediaLibraryPage() {
         blob={previewBlob ?? undefined}
         textContent={previewTextContent ?? undefined}
         pdfPageImageUrls={previewPdfPageImageUrls}
-        pptxSlideImageUrls={previewSlideImageUrls}
         allowDownload={false}
       />
     );

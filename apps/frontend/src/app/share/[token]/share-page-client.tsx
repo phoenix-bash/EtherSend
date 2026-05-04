@@ -9,6 +9,7 @@ import {
   ApiError,
   absoluteApiUrl,
   fetchPublicBatchShare,
+  shareFileOfficePagesPath,
   shareFilePath,
   resolveSecurityTeaseMessage,
   type PublicBatchShare
@@ -27,6 +28,7 @@ interface PreviewState {
   objectUrl?: string;
   blob?: Blob;
   textContent?: string;
+  pdfPageImageUrls?: string[];
   loading: boolean;
   error?: string;
 }
@@ -176,6 +178,29 @@ function hasTextPreviewExtension(fileName: string): boolean {
   return TEXT_FILE_EXTENSIONS.has(extension);
 }
 
+function isPdfFile(file: { mimeType: string; filename: string }): boolean {
+  return file.mimeType.toLowerCase() === "application/pdf" || file.filename.toLowerCase().endsWith(".pdf");
+}
+
+function isOfficeDocument(file: { mimeType: string; filename: string }): boolean {
+  const normalizedMime = file.mimeType.toLowerCase();
+  if (
+    normalizedMime.includes("application/msword") ||
+    normalizedMime.includes("application/vnd.ms-") ||
+    normalizedMime.includes("application/vnd.openxmlformats-officedocument") ||
+    normalizedMime.includes("application/vnd.oasis.opendocument")
+  ) {
+    return true;
+  }
+
+  if (normalizedMime === "text/plain" || normalizedMime === "text/html") {
+    return true;
+  }
+
+  const extension = file.filename.toLowerCase().split(".").pop() || "";
+  return ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "pps", "ppsx", "odt", "ods", "odp", "txt", "html", "htm"].includes(extension);
+}
+
 function renderShareThumbnail(token: string, file: PublicBatchShare["batch"]["files"][number]) {
   const kind = classifyMimeType(file.mimeType);
 
@@ -278,6 +303,32 @@ export function SharePageClient({ token }: SharePageClientProps) {
     });
 
     try {
+      if (isOfficeDocument(file) && !isPdfFile(file)) {
+        const officePreviewResponse = await fetch(absoluteApiUrl(shareFileOfficePagesPath(token, file.id)), {
+          credentials: "include",
+          headers: buildPreviewHeaders()
+        });
+
+        if (officePreviewResponse.ok) {
+          const payload = (await officePreviewResponse.json()) as { success?: boolean; pages?: string[] };
+          const pageUrls = (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
+
+          setPreview((current) => {
+            if (!current || current.sourceUrl !== sourceUrl) {
+              return current;
+            }
+
+            return {
+              ...current,
+              mimeType: "application/pdf",
+              pdfPageImageUrls: pageUrls,
+              loading: false
+            };
+          });
+          return;
+        }
+      }
+
       const response = await fetch(sourceUrl, { credentials: "include", headers: buildPreviewHeaders() });
       if (!response.ok) {
         let message = response.status === 403 ? "Preview is unavailable for this file type when download is disabled." : `Preview request failed with status ${response.status}`;
@@ -327,6 +378,7 @@ export function SharePageClient({ token }: SharePageClientProps) {
           mimeType: resolvedMimeType,
           blob,
           objectUrl,
+          pdfPageImageUrls: undefined,
           loading: false
         };
       });
@@ -729,6 +781,7 @@ export function SharePageClient({ token }: SharePageClientProps) {
                     objectUrl={preview.objectUrl}
                     blob={preview.blob}
                     textContent={preview.textContent}
+                    pdfPageImageUrls={preview.pdfPageImageUrls}
                     allowDownload={Boolean(data?.allowDownload)}
                   />
                 )}

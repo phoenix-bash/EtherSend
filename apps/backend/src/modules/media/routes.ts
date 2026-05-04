@@ -1,23 +1,20 @@
 import type { FastifyInstance } from "fastify";
 import type { MediaFile } from "@prisma/client";
 import { z } from "zod";
-import { enqueueDocumentConversion, documentConversionQueue } from "../../queues/document-conversion-queue.js";
 import { requireAuth } from "../../middlewares/auth.js";
 import { ensureGuestSession } from "../../middlewares/guest-session.js";
 import { enforceMediaAccess } from "../../middlewares/access-control.js";
 import { LocalStorageProvider } from "../../providers/storage/local-storage.provider.js";
 import { HttpError } from "../../utils/http-error.js";
 import { MediaRepository } from "./repository.js";
-import { OfficePreviewService } from "./office-preview.service.js";
+import { ConvertioPreviewService } from "./convertio-preview.service.js";
 import { PdfPagePreviewService } from "./pdf-page-preview.service.js";
-import { PptxSlidePreviewService } from "./pptx-slide-preview.service.js";
 import { MediaService } from "./service.js";
 
 const service = new MediaService(new MediaRepository());
 const storage = new LocalStorageProvider();
-const officePreviewService = new OfficePreviewService();
+const convertioPreviewService = new ConvertioPreviewService();
 const pdfPagePreviewService = new PdfPagePreviewService();
-const pptxSlidePreviewService = new PptxSlidePreviewService();
 
 const mediaIdParamSchema = z.object({
   mediaId: z.string().uuid()
@@ -27,19 +24,9 @@ const mediaAccessQuerySchema = z.object({
   disposition: z.enum(["view", "download"]).optional()
 });
 
-const mediaSlideParamSchema = z.object({
-  mediaId: z.string().uuid(),
-  slideFileName: z.string().min(1)
-});
-
 const mediaPdfPageParamSchema = z.object({
   mediaId: z.string().uuid(),
   pageFileName: z.string().min(1)
-});
-
-const mediaConversionJobParamSchema = z.object({
-  mediaId: z.string().uuid(),
-  jobId: z.string().min(1)
 });
 
 function serializeMedia(media: MediaFile) {
@@ -117,76 +104,6 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
       const guestSessionId = userId ? undefined : String(request.headers["x-guest-session-id"] || "");
       const media = await service.upload({ file: part, userId, guestSessionId });
       return reply.status(201).send({ media: serializeMedia(media) });
-    }
-  );
-
-  app.post(
-    "/m/:mediaId/conversion/enqueue",
-    {
-      preHandler: [ensureGuestSession],
-      config: {
-        rateLimit: {
-          max: 20,
-          timeWindow: "1 minute"
-        }
-      }
-    },
-    async (request, reply) => {
-      const mediaIdResult = mediaIdParamSchema.safeParse(request.params);
-      if (!mediaIdResult.success) {
-        return reply.status(400).send({ error: "Invalid media id" });
-      }
-
-      const mediaId = mediaIdResult.data.mediaId;
-      await enforceMediaAccess(mediaId, "view");
-
-      const media = await new MediaRepository().findById(mediaId);
-      if (!media) {
-        return reply.status(404).send({ error: "Not found" });
-      }
-
-      const jobId = await enqueueDocumentConversion(mediaId, "manual");
-      return reply.status(202).send({
-        mediaId,
-        jobId,
-        status: "queued"
-      });
-    }
-  );
-
-  app.get(
-    "/m/:mediaId/conversion/jobs/:jobId",
-    {
-      preHandler: [ensureGuestSession],
-      config: {
-        rateLimit: {
-          max: 60,
-          timeWindow: "1 minute"
-        }
-      }
-    },
-    async (request, reply) => {
-      const parseResult = mediaConversionJobParamSchema.safeParse(request.params);
-      if (!parseResult.success) {
-        return reply.status(400).send({ error: "Invalid conversion job path" });
-      }
-
-      const { mediaId, jobId } = parseResult.data;
-      await enforceMediaAccess(mediaId, "view");
-
-      const job = await documentConversionQueue.getJob(jobId);
-      if (!job || job.data.mediaId !== mediaId) {
-        return reply.status(404).send({ error: "Conversion job not found" });
-      }
-
-      const state = await job.getState();
-      return reply.send({
-        mediaId,
-        jobId,
-        state,
-        result: job.returnvalue ?? null,
-        failedReason: job.failedReason ?? null
-      });
     }
   );
 
@@ -432,7 +349,7 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
   );
 
   app.get(
-    "/m/:mediaId/slides",
+    "/m/:mediaId/office-pages",
     {
       config: {
         rateLimit: {
@@ -454,15 +371,16 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(404).send({ error: "Not found" });
       }
 
-      const slides = await pptxSlidePreviewService.ensureSlidePreview(media).catch(() => [] as string[]);
+      const pages = await convertioPreviewService.ensureOfficePagePreview(media);
       return reply.send({
-        slides: slides.map((fileName) => `/m/${mediaId}/slides/${encodeURIComponent(fileName)}`)
+        success: true,
+        pages: pages.map((fileName) => `/m/${mediaId}/office-pages/${encodeURIComponent(fileName)}`)
       });
     }
   );
 
   app.get(
-    "/m/:mediaId/slides/:slideFileName",
+    "/m/:mediaId/office-pages/:pageFileName",
     {
       config: {
         rateLimit: {
@@ -472,53 +390,22 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
       }
     },
     async (request, reply) => {
-      const parseResult = mediaSlideParamSchema.safeParse(request.params);
+      const parseResult = mediaPdfPageParamSchema.safeParse(request.params);
       if (!parseResult.success) {
-        return reply.status(400).send({ error: "Invalid slide path" });
+        return reply.status(400).send({ error: "Invalid page path" });
       }
 
-      const { mediaId, slideFileName } = parseResult.data;
+      const { mediaId, pageFileName } = parseResult.data;
       await enforceMediaAccess(mediaId, "view");
       const media = await new MediaRepository().findById(mediaId);
       if (!media) {
         return reply.status(404).send({ error: "Not found" });
       }
 
-      const slide = await pptxSlidePreviewService.openSlideStream(media, slideFileName);
-      reply.header("Content-Type", slide.contentType);
-      reply.header("Content-Disposition", `inline; filename=\"${slideFileName}\"`);
-      return reply.send(slide.stream);
-    }
-  );
-
-  app.get(
-    "/m/:mediaId/preview.pdf",
-    {
-      config: {
-        rateLimit: {
-          max: 40,
-          timeWindow: "1 minute"
-        }
-      }
-    },
-    async (request, reply) => {
-      const mediaIdResult = mediaIdParamSchema.safeParse(request.params);
-      if (!mediaIdResult.success) {
-        return reply.status(400).send({ error: "Invalid media id" });
-      }
-
-      const mediaId = mediaIdResult.data.mediaId;
-      await enforceMediaAccess(mediaId, "view");
-      const media = await new MediaRepository().findById(mediaId);
-      if (!media) {
-        return reply.status(404).send({ error: "Not found" });
-      }
-
-      const previewStream = await officePreviewService.ensurePdfPreview(media);
-      const filenameWithoutExt = media.filename.replace(/\.[^./\\]+$/, "") || "document";
-      reply.header("Content-Type", "application/pdf");
-      reply.header("Content-Disposition", `inline; filename=\"${filenameWithoutExt}.pdf\"`);
-      return reply.send(previewStream);
+      const page = await convertioPreviewService.openPageStream(media, pageFileName);
+      reply.header("Content-Type", page.contentType);
+      reply.header("Content-Disposition", `inline; filename=\"${pageFileName}\"`);
+      return reply.send(page.stream);
     }
   );
 

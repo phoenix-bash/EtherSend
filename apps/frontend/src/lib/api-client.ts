@@ -1018,20 +1018,16 @@ export function shareFilePath(token: string, mediaId: string, disposition: "view
   return `/shares/${token}/files/${mediaId}${query}`;
 }
 
-export function shareFilePdfPreviewPath(token: string, mediaId: string): string {
-  return `/shares/${token}/files/${mediaId}/preview.pdf`;
+export function shareFileOfficePagesPath(token: string, mediaId: string): string {
+  return `/shares/${token}/files/${mediaId}/office-pages`;
 }
 
 export function mediaViewUrl(mediaId: string): string {
   return `${API_BASE_URL}/m/${mediaId}`;
 }
 
-export function mediaPreviewPdfUrl(mediaId: string): string {
-  return `${API_BASE_URL}/m/${mediaId}/preview.pdf`;
-}
-
-export function mediaPptxSlidesUrl(mediaId: string): string {
-  return `${API_BASE_URL}/m/${mediaId}/slides`;
+export function mediaOfficePagesUrl(mediaId: string): string {
+  return `${API_BASE_URL}/m/${mediaId}/office-pages`;
 }
 
 export function mediaPdfPagesUrl(mediaId: string): string {
