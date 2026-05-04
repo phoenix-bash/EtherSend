@@ -238,7 +238,9 @@ export class DominatorRepository {
   async getPlatformMetrics(now: Date): Promise<{
     totalRegisteredUsers: number;
     totalGuestUsers: number;
+    totalGuestUsersTillDate: number;
     totalUsersOverall: number;
+    totalUsersTillDate: number;
     activeLoggedInUsers: number;
     activeGuests: number;
     totalUploadedFiles: number;
@@ -254,9 +256,31 @@ export class DominatorRepository {
   }> {
     const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
     const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const currentGuestWhere = {
+      OR: [
+        {
+          expiresAt: {
+            gt: now
+          }
+        },
+        {
+          expiresAt: null,
+          updatedAt: {
+            gte: fiveMinutesAgo
+          }
+        }
+      ]
+    };
+    const activeGuestWhere = {
+      ...currentGuestWhere,
+      updatedAt: {
+        gte: fiveMinutesAgo
+      }
+    };
 
     const [
       totalRegisteredUsers,
+      totalGuestUsersTillDate,
       totalGuestUsers,
       activeLoggedInUsers,
       activeGuests,
@@ -273,6 +297,7 @@ export class DominatorRepository {
     ] = await Promise.all([
       prisma.user.count(),
       prisma.guestSession.count(),
+      prisma.guestSession.count({ where: currentGuestWhere }),
       prisma.loginSession.findMany({
         where: {
           revokedAt: null,
@@ -288,13 +313,7 @@ export class DominatorRepository {
           userId: true
         }
       }).then((items) => items.length),
-      prisma.guestSession.count({
-        where: {
-          updatedAt: {
-            gte: fiveMinutesAgo
-          }
-        }
-      }),
+      prisma.guestSession.count({ where: activeGuestWhere }),
       prisma.mediaFile.count(),
       prisma.batchShareToken.count({
         where: {
@@ -379,7 +398,9 @@ export class DominatorRepository {
     return {
       totalRegisteredUsers,
       totalGuestUsers,
+      totalGuestUsersTillDate,
       totalUsersOverall: totalRegisteredUsers + totalGuestUsers,
+      totalUsersTillDate: totalRegisteredUsers + totalGuestUsersTillDate,
       activeLoggedInUsers,
       activeGuests,
       totalUploadedFiles,
@@ -656,6 +677,129 @@ export class DominatorRepository {
     });
   }
 
+  async listStoragePathsByOwnerType(ownerType: "USER" | "GUEST"): Promise<string[]> {
+    const mediaFiles = await prisma.mediaFile.findMany({
+      where: {
+        ownerType
+      },
+      select: {
+        storagePath: true,
+        versions: {
+          select: {
+            storagePath: true
+          }
+        }
+      }
+    });
+
+    const paths = new Set<string>();
+    for (const media of mediaFiles) {
+      paths.add(media.storagePath);
+      for (const version of media.versions) {
+        paths.add(version.storagePath);
+      }
+    }
+
+    return Array.from(paths);
+  }
+
+  async listV2UploadStoragePaths(scope: "guests" | "registered"): Promise<string[]> {
+    const uploads = await prisma.v2Upload.findMany({
+      where:
+        scope === "guests"
+          ? {
+              userId: {
+                startsWith: "guest:"
+              }
+            }
+          : {
+              NOT: {
+                userId: {
+                  startsWith: "guest:"
+                }
+              }
+            },
+      select: {
+        s3Bucket: true,
+        s3Key: true
+      }
+    });
+
+    return uploads
+      .map((upload) => {
+        if (!upload.s3Bucket || !upload.s3Key) {
+          return null;
+        }
+
+        return `s3://${upload.s3Bucket}/${upload.s3Key}`;
+      })
+      .filter((value): value is string => Boolean(value));
+  }
+
+  async clearGuestStorageData(): Promise<{ batchesDeleted: number; mediaDeleted: number; guestSessionsDeleted: number; v2UploadsDeleted: number }> {
+    return prisma.$transaction(async (tx) => {
+      const [batchesDeleted, mediaDeleted, guestSessionsDeleted, v2UploadsDeleted] = await Promise.all([
+        tx.mediaBatch.deleteMany({
+          where: {
+            ownerType: "GUEST"
+          }
+        }),
+        tx.mediaFile.deleteMany({
+          where: {
+            ownerType: "GUEST"
+          }
+        }),
+        tx.guestSession.deleteMany({}),
+        tx.v2Upload.deleteMany({
+          where: {
+            userId: {
+              startsWith: "guest:"
+            }
+          }
+        })
+      ]);
+
+      return {
+        batchesDeleted: batchesDeleted.count,
+        mediaDeleted: mediaDeleted.count,
+        guestSessionsDeleted: guestSessionsDeleted.count,
+        v2UploadsDeleted: v2UploadsDeleted.count
+      };
+    });
+  }
+
+  async clearRegisteredUserStorageData(): Promise<{ batchesDeleted: number; mediaDeleted: number; v2UploadsDeleted: number }> {
+    return prisma.$transaction(async (tx) => {
+      const [batchesDeleted, mediaDeleted, v2UploadsDeleted] = await Promise.all([
+        tx.mediaBatch.deleteMany({
+          where: {
+            ownerType: "USER"
+          }
+        }),
+        tx.mediaFile.deleteMany({
+          where: {
+            ownerType: "USER"
+          }
+        }),
+        tx.v2Upload.deleteMany({
+          where: {
+            NOT: {
+              userId: {
+                startsWith: "guest:"
+              }
+            }
+          }
+        })
+      ]);
+
+      return {
+        batchesDeleted: batchesDeleted.count,
+        mediaDeleted: mediaDeleted.count,
+        v2UploadsDeleted: v2UploadsDeleted.count
+      };
+    });
+  }
+
   async getLiveActivity(now: Date): Promise<{
     onlineUsers: number;
     uploadingUsers: number;
@@ -682,7 +826,10 @@ export class DominatorRepository {
       }).then((items) => items.length),
       prisma.v2Upload.findMany({
         where: {
-          status: "UPLOADING"
+          status: "UPLOADING",
+          createdAt: {
+            gte: fiveMinutesAgo
+          }
         },
         distinct: ["userId"],
         select: {
@@ -699,6 +846,16 @@ export class DominatorRepository {
       }),
       prisma.guestSession.count({
         where: {
+          OR: [
+            {
+              expiresAt: {
+                gt: now
+              }
+            },
+            {
+              expiresAt: null
+            }
+          ],
           updatedAt: {
             gte: fiveMinutesAgo
           }

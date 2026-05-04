@@ -7,6 +7,7 @@ interface MetricsCacheEntry {
       totalRegistered: number;
       totalGuests: number;
       totalOverall: number;
+      totalTillDate: number;
       activeUsers: number;
       activeGuests: number;
       activeLoggedInUsers: number;
@@ -56,6 +57,7 @@ export class AdminMetricsService {
         totalRegistered: metrics.totalRegisteredUsers,
         totalGuests: metrics.totalGuestUsers,
         totalOverall: metrics.totalUsersOverall,
+        totalTillDate: metrics.totalUsersTillDate,
         activeUsers: metrics.activeLoggedInUsers + metrics.activeGuests,
         activeGuests: metrics.activeGuests,
         activeLoggedInUsers: metrics.activeLoggedInUsers

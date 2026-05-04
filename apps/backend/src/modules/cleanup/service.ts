@@ -7,6 +7,7 @@ export interface CleanupSummary {
   scanned: number;
   deleted: number;
   deactivated: number;
+  guestUploadsCleared: number;
   sessionsCleared: number;
 }
 
@@ -15,6 +16,7 @@ export class CleanupService {
   private readonly mediaRepository = new MediaRepository();
 
   async cleanupExpiredGuestMedia(limit = env.CLEANUP_BATCH_SIZE): Promise<CleanupSummary> {
+    const now = new Date();
     const expired = await this.mediaRepository.listExpiredGuestMedia(limit);
 
     let deleted = 0;
@@ -36,10 +38,70 @@ export class CleanupService {
       }
     }
 
+    const expiredGuestSessions = await prisma.guestSession.findMany({
+      where: {
+        expiresAt: {
+          lte: now
+        }
+      },
+      select: {
+        id: true
+      }
+    });
+
+    const expiredGuestUserIds = expiredGuestSessions.map((session) => `guest:${session.id}`);
+    let guestUploadsCleared = 0;
+
+    if (expiredGuestUserIds.length > 0) {
+      const guestUploads = await prisma.v2Upload.findMany({
+        where: {
+          userId: {
+            in: expiredGuestUserIds
+          }
+        },
+        select: {
+          id: true,
+          s3Bucket: true,
+          s3Key: true
+        }
+      });
+
+      for (const upload of guestUploads) {
+        if (!upload.s3Bucket || !upload.s3Key) {
+          continue;
+        }
+
+        try {
+          await this.storage.delete(`s3://${upload.s3Bucket}/${upload.s3Key}`);
+        } catch {
+        }
+      }
+
+      const deletedUploads = await prisma.v2Upload.deleteMany({
+        where: {
+          id: {
+            in: guestUploads.map((upload) => upload.id)
+          }
+        }
+      });
+      guestUploadsCleared = deletedUploads.count;
+    }
+
+    await prisma.mediaBatch.deleteMany({
+      where: {
+        ownerType: "GUEST",
+        guestSession: {
+          expiresAt: {
+            lte: now
+          }
+        }
+      }
+    });
+
     const clearedSessions = await prisma.guestSession.deleteMany({
       where: {
         expiresAt: {
-          lte: new Date()
+          lte: now
         },
         mediaFiles: {
           none: {}
@@ -51,6 +113,7 @@ export class CleanupService {
       scanned: expired.length,
       deleted,
       deactivated,
+      guestUploadsCleared,
       sessionsCleared: clearedSessions.count
     };
   }

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   absoluteApiUrl,
   ApiError,
+  clearDominatorGuestStorage,
+  clearDominatorRegisteredStorage,
   createDominatorSession,
   deleteDominatorFile,
   deleteDominatorUser,
@@ -15,6 +17,7 @@ import {
   mediaViewUrl,
   logoutDominatorSession,
   searchDominatorUsers,
+  verifyDominatorDestructiveMode,
   type DominatorOverview
 } from "../../lib/api-client";
 import { formatDateTimeDdMmYyyyHm } from "../../lib/utils";
@@ -98,10 +101,14 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
   const [userFiles, setUserFiles] = useState<DominatorFile[]>([]);
   const [superuserPassword, setSuperuserPassword] = useState("");
   const [actionError, setActionError] = useState("");
+  const [actionStatus, setActionStatus] = useState("");
+  const [mode, setMode] = useState<"MONITOR" | "DESTRUCTIVE">("MONITOR");
+  const [modeBusy, setModeBusy] = useState(false);
+  const [reloadBusy, setReloadBusy] = useState(false);
 
   const canLogin = Boolean(challengeToken) && email.length > 0 && password.length > 0;
 
-  async function loadDashboardData(): Promise<void> {
+  async function loadDashboardData(preferredUserId?: string): Promise<void> {
     const [overviewResult, liveResult, auditResult, usersResult] = await Promise.all([
       fetchDominatorOverview(),
       fetchDominatorLiveActivity(),
@@ -115,7 +122,12 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
     setUsers(usersResult.items);
 
     if (usersResult.items.length > 0) {
-      await loadUser(usersResult.items[0].id);
+      const selected = preferredUserId ? usersResult.items.find((item) => item.id === preferredUserId) : null;
+      const targetUserId = selected?.id ?? usersResult.items[0].id;
+      await loadUser(targetUserId);
+    } else {
+      setSelectedUser(null);
+      setUserFiles([]);
     }
   }
 
@@ -173,10 +185,17 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
   }
 
   async function handleDeleteFile(mediaId: string): Promise<void> {
-    if (!superuserPassword) {
+    if (mode !== "DESTRUCTIVE") {
+      setActionError("Switch to Destructive mode to delete.");
       return;
     }
 
+    if (!superuserPassword) {
+      setActionError("Re-enter Destructive mode to continue.");
+      return;
+    }
+
+    setActionStatus("");
     setActionError("");
     try {
       await deleteDominatorFile(mediaId, superuserPassword);
@@ -193,7 +212,15 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
   }
 
   async function handleDeleteUser(): Promise<void> {
+    if (mode !== "DESTRUCTIVE") {
+      setActionError("Switch to Destructive mode to delete.");
+      return;
+    }
+
     if (!selectedUser || !superuserPassword) {
+      if (!superuserPassword) {
+        setActionError("Re-enter Destructive mode to continue.");
+      }
       return;
     }
 
@@ -202,6 +229,7 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
       return;
     }
 
+    setActionStatus("");
     setActionError("");
     try {
       await deleteDominatorUser(selectedUser.id, superuserPassword);
@@ -222,6 +250,74 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
     window.location.href = "/";
   }
 
+  async function handleClearGuestStorage(): Promise<void> {
+    if (mode !== "DESTRUCTIVE") {
+      setActionError("Switch to Destructive mode to clear storage.");
+      return;
+    }
+
+    if (!superuserPassword) {
+      setActionError("Re-enter Destructive mode to continue.");
+      return;
+    }
+
+    const confirmed = window.confirm("Clear all guest storage and guest sessions? This cannot be undone.");
+    if (!confirmed) {
+      return;
+    }
+
+    setActionStatus("");
+    setActionError("");
+    try {
+      const result = await clearDominatorGuestStorage(superuserPassword);
+      setActionStatus(`Guest storage cleared. Files: ${result.summary.mediaDeleted}, sessions: ${result.summary.guestSessionsDeleted}.`);
+      await loadDashboardData();
+      if (selectedUser) {
+        await loadUser(selectedUser.id);
+      }
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setActionError(error.message);
+      } else {
+        setActionError("Guest storage clear failed");
+      }
+    }
+  }
+
+  async function handleClearRegisteredStorage(): Promise<void> {
+    if (mode !== "DESTRUCTIVE") {
+      setActionError("Switch to Destructive mode to clear storage.");
+      return;
+    }
+
+    if (!superuserPassword) {
+      setActionError("Re-enter Destructive mode to continue.");
+      return;
+    }
+
+    const confirmed = window.confirm("Clear all registered-user storage? This cannot be undone.");
+    if (!confirmed) {
+      return;
+    }
+
+    setActionStatus("");
+    setActionError("");
+    try {
+      const result = await clearDominatorRegisteredStorage(superuserPassword);
+      setActionStatus(`Registered storage cleared. Files: ${result.summary.mediaDeleted}.`);
+      await loadDashboardData();
+      if (selectedUser) {
+        await loadUser(selectedUser.id);
+      }
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setActionError(error.message);
+      } else {
+        setActionError("Registered storage clear failed");
+      }
+    }
+  }
+
   const storageBreakdown = useMemo(() => {
     if (!overview) {
       return null;
@@ -234,6 +330,72 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
       { label: "Others", value: formatBytes(overview.files.storageBreakdown.othersBytes) }
     ];
   }, [overview]);
+
+  function promptForDominatorPassword(): string | null {
+    const provided = window.prompt("Enter dominator password to enable Destructive mode:", "");
+    if (!provided) {
+      return null;
+    }
+
+    const trimmed = provided.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  async function handleModeChange(nextMode: "MONITOR" | "DESTRUCTIVE"): Promise<void> {
+    if (nextMode === mode) {
+      return;
+    }
+
+    if (nextMode === "MONITOR") {
+      setMode("MONITOR");
+      setSuperuserPassword("");
+      setActionStatus("Monitor mode enabled.");
+      setActionError("");
+      return;
+    }
+
+    const passwordFromPrompt = promptForDominatorPassword();
+    if (!passwordFromPrompt) {
+      setActionError("Destructive mode was cancelled.");
+      return;
+    }
+
+    setModeBusy(true);
+    setActionStatus("");
+    setActionError("");
+    try {
+      await verifyDominatorDestructiveMode(passwordFromPrompt);
+      setSuperuserPassword(passwordFromPrompt);
+      setMode("DESTRUCTIVE");
+      setActionStatus("Destructive mode enabled.");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setActionError(error.message);
+      } else {
+        setActionError("Mode verification failed");
+      }
+    } finally {
+      setModeBusy(false);
+    }
+  }
+
+  async function handleReloadData(): Promise<void> {
+    setReloadBusy(true);
+    setActionStatus("");
+    setActionError("");
+    try {
+      await loadDashboardData(selectedUser?.id);
+      setActionStatus("Dashboard data refreshed.");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setActionError(error.message);
+      } else {
+        setActionError("Reload failed");
+      }
+    } finally {
+      setReloadBusy(false);
+    }
+  }
 
   if (!adminReady) {
     return (
@@ -279,16 +441,55 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
       <div className="mx-auto w-full max-w-7xl px-4 py-5">
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-sm font-semibold uppercase tracking-[0.2em] text-[#8f9ab5]">Dominator Console</h1>
-          <button
-            type="button"
-            onClick={() => {
-              void handleLogout();
-            }}
-            className="rounded border border-[#2b3349] px-3 py-1 text-xs uppercase tracking-wider text-[#cfd6f6]"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                void handleReloadData();
+              }}
+              disabled={reloadBusy}
+              className="rounded border border-[#2b3349] px-3 py-1 text-xs uppercase tracking-wider text-[#cfd6f6] disabled:opacity-40"
+            >
+              {reloadBusy ? "Reloading..." : "Reload Data"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void handleLogout();
+              }}
+              className="rounded border border-[#2b3349] px-3 py-1 text-xs uppercase tracking-wider text-[#cfd6f6]"
+            >
+              Logout
+            </button>
+          </div>
         </div>
+
+        <section className="mb-3 rounded border border-[#2b3349] bg-[#0f1320] p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs uppercase tracking-wider text-[#8f9ab5]">Mode</p>
+            <button
+              type="button"
+              disabled={modeBusy || mode === "MONITOR"}
+              onClick={() => {
+                void handleModeChange("MONITOR");
+              }}
+              className="rounded border border-[#2b3349] px-3 py-1 text-xs uppercase tracking-wider disabled:opacity-40"
+            >
+              Monitor
+            </button>
+            <button
+              type="button"
+              disabled={modeBusy || mode === "DESTRUCTIVE"}
+              onClick={() => {
+                void handleModeChange("DESTRUCTIVE");
+              }}
+              className="rounded border border-[#6f2230] px-3 py-1 text-xs uppercase tracking-wider text-[#ffb8c3] disabled:opacity-40"
+            >
+              {modeBusy ? "Verifying..." : "Destructive"}
+            </button>
+            <p className="text-xs text-[#9ea8c3]">Current: {mode}</p>
+          </div>
+        </section>
 
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <article className="rounded border border-[#2b3349] bg-[#0f1320] p-3">
@@ -296,6 +497,7 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
             <p className="mt-2 text-sm">Registered: {overview?.users.totalRegistered ?? "-"}</p>
             <p className="text-sm">Guests: {overview?.users.totalGuests ?? "-"}</p>
             <p className="text-sm">Overall: {overview?.users.totalOverall ?? "-"}</p>
+            <p className="text-sm">Till date: {overview?.users.totalTillDate ?? "-"}</p>
             <p className="text-sm">Active: {overview?.users.activeUsers ?? "-"}</p>
           </article>
 
@@ -379,7 +581,7 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
                   <p>Active links: {selectedUser.activeLinksCount}</p>
                   <p>Last login: {selectedUser.lastLoginAt ? formatDateTimeDdMmYyyyHm(selectedUser.lastLoginAt) : "-"}</p>
                   <p>IPs: {selectedUser.ipHistory.join(", ") || "-"}</p>
-                  <p>Status: {selectedUser.accountType}</p>
+                  <p>Status: {selectedUser.accountType === "FREE_6M" ? "FREE (3M TTL)" : selectedUser.accountType}</p>
                 </div>
               ) : (
                 <p className="mt-2 text-xs text-[#8f9ab5]">Select a user to view account details.</p>
@@ -387,18 +589,11 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
             </article>
 
             <article className="rounded border border-[#2b3349] bg-[#0f1320] p-3">
-              <h2 className="text-xs uppercase tracking-wider text-[#8f9ab5]">Superuser Password</h2>
+              <h2 className="text-xs uppercase tracking-wider text-[#8f9ab5]">Destructive Actions</h2>
               <div className="mt-2">
-                <input
-                  type="password"
-                  value={superuserPassword}
-                  onChange={(event) => setSuperuserPassword(event.target.value)}
-                  placeholder="Re-enter superuser password"
-                  className="h-9 w-full rounded border border-[#2b3349] bg-[#0c1020] px-3 text-xs"
-                />
                 <button
                   type="button"
-                  disabled={!selectedUser || !superuserPassword}
+                  disabled={mode !== "DESTRUCTIVE" || !selectedUser}
                   onClick={() => {
                     void handleDeleteUser();
                   }}
@@ -406,6 +601,27 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
                 >
                   Delete user
                 </button>
+                <button
+                  type="button"
+                  disabled={mode !== "DESTRUCTIVE"}
+                  onClick={() => {
+                    void handleClearGuestStorage();
+                  }}
+                  className="mt-2 h-9 w-full rounded border border-[#6f4d22] bg-[#2b2010] text-xs uppercase tracking-wider text-[#ffd9a8] disabled:opacity-40"
+                >
+                  Clear guest storage
+                </button>
+                <button
+                  type="button"
+                  disabled={mode !== "DESTRUCTIVE"}
+                  onClick={() => {
+                    void handleClearRegisteredStorage();
+                  }}
+                  className="mt-2 h-9 w-full rounded border border-[#6f2230] bg-[#2b1017] text-xs uppercase tracking-wider text-[#ffb8c3] disabled:opacity-40"
+                >
+                  Clear registered storage
+                </button>
+                {actionStatus ? <p className="mt-2 text-xs text-[#9de0b0]">{actionStatus}</p> : null}
                 {actionError ? <p className="mt-2 text-xs text-[#ff8e8e]">{actionError}</p> : null}
               </div>
             </article>
@@ -429,7 +645,7 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
                   </a>
                   <button
                     type="button"
-                    disabled={!superuserPassword}
+                    disabled={mode !== "DESTRUCTIVE"}
                     onClick={() => {
                       void handleDeleteFile(file.id);
                     }}

@@ -195,6 +195,36 @@ export default function SignInPage() {
           </button>
         </div>
 
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              startOAuthInSameTab("google");
+            }}
+            className="group flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-high transition-all duration-200 active:scale-[0.98] hover:bg-surface-bright"
+          >
+            <Chrome className="h-4 w-4" />
+            <span className="text-xs font-label uppercase tracking-wider text-on-surface">Continue with Google</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              startOAuthInSameTab("github");
+            }}
+            className="group flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-high transition-all duration-200 active:scale-[0.98] hover:bg-surface-bright"
+          >
+            <Github className="h-4 w-4" />
+            <span className="text-xs font-label uppercase tracking-wider text-on-surface">Continue with GitHub</span>
+          </button>
+        </div>
+
+        <div className="my-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-outline-variant/20" />
+          <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">or use email</p>
+          <div className="h-px flex-1 bg-outline-variant/20" />
+        </div>
+
         <form
           className="space-y-3"
           onSubmit={(event) => {
@@ -293,36 +323,6 @@ export default function SignInPage() {
             </Link>
           </div>
         ) : null}
-
-        <div className="my-4 flex items-center gap-3">
-          <div className="h-px flex-1 bg-outline-variant/20" />
-          <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">or</p>
-          <div className="h-px flex-1 bg-outline-variant/20" />
-        </div>
-
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => {
-              startOAuthInSameTab("google");
-            }}
-            className="group flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-high transition-all duration-200 active:scale-[0.98] hover:bg-surface-bright"
-          >
-            <Chrome className="h-4 w-4" />
-            <span className="text-xs font-label uppercase tracking-wider text-on-surface">Continue with Google</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              startOAuthInSameTab("github");
-            }}
-            className="group flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-outline-variant/20 bg-surface-container-high transition-all duration-200 active:scale-[0.98] hover:bg-surface-bright"
-          >
-            <Github className="h-4 w-4" />
-            <span className="text-xs font-label uppercase tracking-wider text-on-surface">Continue with GitHub</span>
-          </button>
-        </div>
 
         {status ? <p className="mt-4 text-xs text-primary">{status}</p> : null}
         {error ? <p className="mt-2 text-xs text-error">{error}</p> : null}

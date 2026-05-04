@@ -476,8 +476,12 @@ export function resetPasswordWithToken(input: { token: string; password: string 
 }
 
 export async function fetchAccountInfo(): Promise<AccountInfo | null> {
-  if (!getUsableAccessToken()) {
-    return null;
+  let token = getUsableAccessToken();
+  if (!token) {
+    token = await refreshAccessToken();
+    if (!token) {
+      return null;
+    }
   }
 
   try {
@@ -485,7 +489,18 @@ export async function fetchAccountInfo(): Promise<AccountInfo | null> {
     return result.account;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
-      clearAccessToken();
+      const refreshedToken = await refreshAccessToken();
+      if (!refreshedToken) {
+        clearAccessToken();
+        return null;
+      }
+
+      try {
+        const retried = await apiRequest<{ account: AccountInfo | null }>("/auth/account");
+        return retried.account;
+      } catch {
+        clearAccessToken();
+      }
     }
 
     return null;
@@ -881,6 +896,7 @@ export interface DominatorOverview {
     totalRegistered: number;
     totalGuests: number;
     totalOverall: number;
+    totalTillDate: number;
     activeUsers: number;
     activeGuests: number;
     activeLoggedInUsers: number;
@@ -1008,6 +1024,44 @@ export function fetchDominatorAuditLogs(take = 100): Promise<{
   logs: Array<{ id: string; action: string; status: string; ipAddress: string | null; targetUserId: string | null; createdAt: string }>;
 }> {
   return apiRequest(`/dominator/audit-logs?take=${take}`);
+}
+
+export function clearDominatorGuestStorage(superuserPassword: string): Promise<{
+  ok: boolean;
+  summary: {
+    deletedStorageObjects: number;
+    batchesDeleted: number;
+    mediaDeleted: number;
+    guestSessionsDeleted: number;
+    v2UploadsDeleted: number;
+  };
+}> {
+  return apiRequest("/dominator/storage/guests/clear", {
+    method: "POST",
+    body: JSON.stringify({ superuserPassword })
+  });
+}
+
+export function verifyDominatorDestructiveMode(superuserPassword: string): Promise<{ ok: boolean }> {
+  return apiRequest("/dominator/destructive/verify", {
+    method: "POST",
+    body: JSON.stringify({ superuserPassword })
+  });
+}
+
+export function clearDominatorRegisteredStorage(superuserPassword: string): Promise<{
+  ok: boolean;
+  summary: {
+    deletedStorageObjects: number;
+    batchesDeleted: number;
+    mediaDeleted: number;
+    v2UploadsDeleted: number;
+  };
+}> {
+  return apiRequest("/dominator/storage/registered/clear", {
+    method: "POST",
+    body: JSON.stringify({ superuserPassword })
+  });
 }
 
 export function fetchPublicBatchShare(token: string, password?: string): Promise<PublicBatchShare> {

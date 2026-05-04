@@ -103,6 +103,102 @@ export class AdminUserService {
     });
   }
 
+  async clearGuestStorage(input: { superuserPassword: string; ipAddress?: string; userAgent?: string }): Promise<{
+    deletedStorageObjects: number;
+    batchesDeleted: number;
+    mediaDeleted: number;
+    guestSessionsDeleted: number;
+    v2UploadsDeleted: number;
+  }> {
+    await this.verifySuperuserPassword(input.superuserPassword);
+
+    const [legacyStoragePaths, v2StoragePaths] = await Promise.all([
+      this.repository.listStoragePathsByOwnerType("GUEST"),
+      this.repository.listV2UploadStoragePaths("guests")
+    ]);
+    const storagePaths = Array.from(new Set<string>([...legacyStoragePaths, ...v2StoragePaths]));
+
+    const summary = await this.repository.clearGuestStorageData();
+
+    let deletedStorageObjects = 0;
+    for (const path of storagePaths) {
+      try {
+        await this.storage.delete(path);
+        deletedStorageObjects += 1;
+      } catch {
+      }
+    }
+
+    await this.auditService.log({
+      action: "guest_storage_clear",
+      status: "ok",
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+      details: {
+        ...summary,
+        deletedStorageObjects
+      }
+    });
+
+    return {
+      deletedStorageObjects,
+      ...summary
+    };
+  }
+
+  async clearRegisteredUserStorage(input: { superuserPassword: string; ipAddress?: string; userAgent?: string }): Promise<{
+    deletedStorageObjects: number;
+    batchesDeleted: number;
+    mediaDeleted: number;
+    v2UploadsDeleted: number;
+  }> {
+    await this.verifySuperuserPassword(input.superuserPassword);
+
+    const [legacyStoragePaths, v2StoragePaths] = await Promise.all([
+      this.repository.listStoragePathsByOwnerType("USER"),
+      this.repository.listV2UploadStoragePaths("registered")
+    ]);
+    const storagePaths = Array.from(new Set<string>([...legacyStoragePaths, ...v2StoragePaths]));
+
+    const summary = await this.repository.clearRegisteredUserStorageData();
+
+    let deletedStorageObjects = 0;
+    for (const path of storagePaths) {
+      try {
+        await this.storage.delete(path);
+        deletedStorageObjects += 1;
+      } catch {
+      }
+    }
+
+    await this.auditService.log({
+      action: "registered_storage_clear",
+      status: "ok",
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+      details: {
+        ...summary,
+        deletedStorageObjects
+      }
+    });
+
+    return {
+      deletedStorageObjects,
+      ...summary
+    };
+  }
+
+  async verifyDestructiveAccess(input: { superuserPassword: string; ipAddress?: string; userAgent?: string }): Promise<void> {
+    await this.verifySuperuserPassword(input.superuserPassword);
+
+    await this.auditService.log({
+      action: "destructive_mode_verify",
+      status: "ok",
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent
+    });
+  }
+
   private async verifySuperuserPassword(password: string): Promise<void> {
     const matches = await compare(password, env.SUPERUSER_PASSWORD_HASH);
     if (!matches) {

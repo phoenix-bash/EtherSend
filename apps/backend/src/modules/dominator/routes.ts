@@ -332,6 +332,69 @@ export async function registerDominatorRoutes(app: FastifyInstance): Promise<voi
     }
   );
 
+  app.post(
+    "/dominator/storage/guests/clear",
+    {
+      preHandler: [requireDominatorAuth, requireAdminSession]
+    },
+    async (request, reply) => {
+      const bodyResult = destructiveActionSchema.safeParse(request.body);
+      if (!bodyResult.success) {
+        return reply.status(404).send({ error: "Not Found" });
+      }
+
+      const summary = await userService.clearGuestStorage({
+        superuserPassword: bodyResult.data.superuserPassword,
+        ipAddress: request.ip,
+        userAgent: String(request.headers["user-agent"] ?? "") || undefined
+      });
+
+      return reply.send({ ok: true, summary });
+    }
+  );
+
+  app.post(
+    "/dominator/destructive/verify",
+    {
+      preHandler: [requireDominatorAuth, requireAdminSession]
+    },
+    async (request, reply) => {
+      const bodyResult = destructiveActionSchema.safeParse(request.body);
+      if (!bodyResult.success) {
+        return reply.status(404).send({ error: "Not Found" });
+      }
+
+      await userService.verifyDestructiveAccess({
+        superuserPassword: bodyResult.data.superuserPassword,
+        ipAddress: request.ip,
+        userAgent: String(request.headers["user-agent"] ?? "") || undefined
+      });
+
+      return reply.send({ ok: true });
+    }
+  );
+
+  app.post(
+    "/dominator/storage/registered/clear",
+    {
+      preHandler: [requireDominatorAuth, requireAdminSession]
+    },
+    async (request, reply) => {
+      const bodyResult = destructiveActionSchema.safeParse(request.body);
+      if (!bodyResult.success) {
+        return reply.status(404).send({ error: "Not Found" });
+      }
+
+      const summary = await userService.clearRegisteredUserStorage({
+        superuserPassword: bodyResult.data.superuserPassword,
+        ipAddress: request.ip,
+        userAgent: String(request.headers["user-agent"] ?? "") || undefined
+      });
+
+      return reply.send({ ok: true, summary });
+    }
+  );
+
   app.get(
     "/dominator/live-activity",
     {
