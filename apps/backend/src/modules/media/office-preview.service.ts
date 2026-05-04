@@ -81,7 +81,7 @@ function resolveInputExtension(media: Pick<MediaFile, "filename" | "extension" |
   return "txt";
 }
 
-function buildCachePaths(media: Pick<MediaFile, "id" | "filename" | "extension" | "updatedAt">): {
+function buildCachePaths(media: Pick<MediaFile, "id" | "filename" | "extension" | "mimeType" | "updatedAt">): {
   cacheDir: string;
   sourcePath: string;
   outputPath: string;
