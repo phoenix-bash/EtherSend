@@ -1,18 +1,27 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 import DominatorClient from "./dominator-client";
 
-function resolveBackendBaseUrl(): string {
+function resolveBackendBaseUrl(requestHeaders: Headers): string {
   const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
   if (configured && /^https?:\/\//i.test(configured)) {
     return configured.replace(/\/+$/, "");
   }
 
+  const forwardedHost = requestHeaders.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const host = forwardedHost || requestHeaders.get("host") || "";
+  const forwardedProto = requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProto || "https";
+  if (host) {
+    const basePath = configured && configured.startsWith("/") ? configured : "/api";
+    return `${protocol}://${host}${basePath}`.replace(/\/+$/, "");
+  }
+
   return "http://localhost:4000";
 }
 
-async function requestBackend(path: string, cookieHeader: string, init?: RequestInit): Promise<Response> {
-  const backendBase = resolveBackendBaseUrl();
+async function requestBackend(path: string, cookieHeader: string, requestHeaders: Headers, init?: RequestInit): Promise<Response> {
+  const backendBase = resolveBackendBaseUrl(requestHeaders);
   return fetch(`${backendBase}${path}`, {
     ...init,
     cache: "no-store",
@@ -24,9 +33,9 @@ async function requestBackend(path: string, cookieHeader: string, init?: Request
   });
 }
 
-async function requestBackendSafe(path: string, cookieHeader: string, init?: RequestInit): Promise<Response | null> {
+async function requestBackendSafe(path: string, cookieHeader: string, requestHeaders: Headers, init?: RequestInit): Promise<Response | null> {
   try {
-    return await requestBackend(path, cookieHeader, init);
+    return await requestBackend(path, cookieHeader, requestHeaders, init);
   } catch {
     return null;
   }
@@ -42,9 +51,10 @@ export default async function DominatorPage({ searchParams }: DominatorPageProps
   const token = Array.isArray(tokenValue) ? tokenValue[0] : tokenValue;
 
   const cookieStore = await cookies();
+  const requestHeaders = await headers();
   const cookieHeader = cookieStore.toString();
 
-  const activeSessionResponse = await requestBackendSafe("/dominator/session/me", cookieHeader);
+  const activeSessionResponse = await requestBackendSafe("/dominator/session/me", cookieHeader, requestHeaders);
   if (activeSessionResponse?.ok) {
     return <DominatorClient initialChallengeToken={null} hasActiveSession />;
   }
@@ -53,7 +63,7 @@ export default async function DominatorPage({ searchParams }: DominatorPageProps
     notFound();
   }
 
-  const consumeResponse = await requestBackendSafe("/dominator/access/consume", cookieHeader, {
+  const consumeResponse = await requestBackendSafe("/dominator/access/consume", cookieHeader, requestHeaders, {
     method: "POST",
     body: JSON.stringify({ token })
   });
