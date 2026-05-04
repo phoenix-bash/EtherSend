@@ -167,6 +167,10 @@ export async function registerDominatorRoutes(app: FastifyInstance): Promise<voi
       }
     },
     async (request, reply) => {
+      if (!request.user?.email) {
+        return reply.status(404).send({ error: "Not Found" });
+      }
+
       const activeSession = await authService.resolveActiveSession(request.cookies.lf_admin_session, request.user.email);
       if (!activeSession) {
         return reply.status(404).send({ error: "Not Found" });

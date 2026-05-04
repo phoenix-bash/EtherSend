@@ -22,12 +22,21 @@ function resolveBackendBaseUrl(requestHeaders: Headers): string {
 
 async function requestBackend(path: string, cookieHeader: string, requestHeaders: Headers, init?: RequestInit): Promise<Response> {
   const backendBase = resolveBackendBaseUrl(requestHeaders);
+  const forwardedHost = requestHeaders.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const host = forwardedHost || requestHeaders.get("host") || "";
+  const forwardedProto = requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProto || "https";
+  const requestOrigin = host ? `${protocol}://${host}` : requestHeaders.get("origin") || undefined;
+  const requestReferer = requestHeaders.get("referer") || (requestOrigin ? `${requestOrigin}/` : undefined);
+
   return fetch(`${backendBase}${path}`, {
     ...init,
     cache: "no-store",
     headers: {
       "content-type": "application/json",
       cookie: cookieHeader,
+      ...(requestOrigin ? { origin: requestOrigin } : {}),
+      ...(requestReferer ? { referer: requestReferer } : {}),
       ...(init?.headers ?? {})
     }
   });

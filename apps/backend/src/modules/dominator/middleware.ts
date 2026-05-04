@@ -34,7 +34,7 @@ export async function requireDominatorAuth(request: FastifyRequest, reply: Fasti
   }
 
   await logFailedAccess(request, "missing_or_invalid_user_auth");
-  reply.status(404).send({ error: "Not Found" });
+  return reply.status(404).send({ error: "Not Found" });
 }
 
 export async function requireAdminSession(request: FastifyRequest, reply: FastifyReply): Promise<void> {
