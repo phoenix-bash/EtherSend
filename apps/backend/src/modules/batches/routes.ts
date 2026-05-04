@@ -107,12 +107,21 @@ function resolveFrontendBaseUrl(request: {
   protocol: string;
   hostname: string;
 }): string {
+  const configuredBase = normalizeBaseUrl(env.FRONTEND_BASE_URL);
+  try {
+    const configuredUrl = new URL(configuredBase);
+    if (!isLoopbackHostname(configuredUrl.hostname)) {
+      return configuredBase;
+    }
+  } catch {
+    return configuredBase;
+  }
+
   const requestBase = resolveRequestBaseUrl(request);
   if (requestBase) {
     return requestBase;
   }
 
-  const configuredBase = normalizeBaseUrl(env.FRONTEND_BASE_URL);
   return configuredBase;
 }
 
@@ -169,6 +178,27 @@ async function resolveActor(
 }
 
 export async function registerBatchRoutes(app: FastifyInstance): Promise<void> {
+  app.get(
+    "/share/:token",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute"
+        }
+      }
+    },
+    async (request, reply) => {
+      const paramsResult = shareTokenParamSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(400).send({ error: "Invalid share token" });
+      }
+
+      const target = `${normalizeBaseUrl(env.FRONTEND_BASE_URL)}/share/${paramsResult.data.token}`;
+      return reply.redirect(target, 302);
+    }
+  );
+
   app.get(
     "/batches",
     {
