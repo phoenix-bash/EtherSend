@@ -467,7 +467,7 @@ export function MediaManager() {
         }
       }
 
-      if (isOfficeDocument(item.mimeType, item.filename) && !pdfFile) {
+      if (isOfficeDocument(item.mimeType, item.filename) && !pdfFile && !pptxFile) {
         const officePreviewResponse = await fetch(mediaPreviewPdfUrl(item.id), { credentials: "include", headers });
         if (officePreviewResponse.ok) {
           const blob = await officePreviewResponse.blob();

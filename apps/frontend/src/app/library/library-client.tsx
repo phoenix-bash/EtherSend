@@ -485,7 +485,7 @@ export default function MediaLibraryPage() {
           }
         }
 
-        if (isOfficeDocument(currentPreviewItem) && !isPdfFile(currentPreviewItem)) {
+        if (isOfficeDocument(currentPreviewItem) && !isPdfFile(currentPreviewItem) && !isPptxFile(currentPreviewItem)) {
           const officePreviewResponse = await fetch(mediaPreviewPdfUrl(currentPreviewItem.id), {
             credentials: "include",
             headers,

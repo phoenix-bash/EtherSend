@@ -34,28 +34,16 @@ function resolveInputExtension(media: Pick<MediaFile, "filename" | "extension" |
   }
 
   const mime = (media.mimeType || "").toLowerCase();
-  if (mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation") {
+  if (mime.includes("presentationml") || mime.includes("powerpoint") || mime.includes("presentation")) {
     return "pptx";
   }
 
-  if (mime === "application/vnd.ms-powerpoint") {
-    return "ppt";
-  }
-
-  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+  if (mime.includes("wordprocessingml") || mime.includes("msword") || mime.includes("word")) {
     return "docx";
   }
 
-  if (mime === "application/msword") {
-    return "doc";
-  }
-
-  if (mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+  if (mime.includes("spreadsheetml") || mime.includes("excel") || mime.includes("spreadsheet")) {
     return "xlsx";
-  }
-
-  if (mime === "application/vnd.ms-excel") {
-    return "xls";
   }
 
   if (mime === "application/vnd.oasis.opendocument.text") {
