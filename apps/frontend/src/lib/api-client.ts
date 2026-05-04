@@ -225,6 +225,7 @@ export interface BatchListItem {
     token: string;
     allowDownload: boolean;
     hideFilenames: boolean;
+    previewViewLimit: number | null;
     expiresAt: string;
     publicPath: string;
     publicUrl?: string;

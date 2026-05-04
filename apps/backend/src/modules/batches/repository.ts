@@ -228,6 +228,15 @@ export class BatchRepository {
     });
   }
 
+  expireShareToken(batchId: string, expiresAt: Date): Promise<BatchShareToken> {
+    return prisma.batchShareToken.update({
+      where: { batchId },
+      data: {
+        expiresAt
+      }
+    });
+  }
+
   findShareByToken(token: string): Promise<BatchShareWithBatch | null> {
     return prisma.batchShareToken.findUnique({
       where: { token },

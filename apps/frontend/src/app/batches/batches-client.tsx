@@ -86,6 +86,7 @@ export default function BatchesPage() {
               token: share.token,
               allowDownload: share.allowDownload,
               hideFilenames: share.hideFilenames,
+              previewViewLimit: share.previewViewLimit,
               expiresAt: share.expiresAt,
               publicPath: share.publicPath,
               publicUrl: share.publicUrl
@@ -218,6 +219,7 @@ export default function BatchesPage() {
               token: share.token,
               allowDownload: share.allowDownload,
               hideFilenames: share.hideFilenames,
+              previewViewLimit: share.previewViewLimit,
               expiresAt: share.expiresAt,
               publicPath: share.publicPath,
               publicUrl: share.publicUrl
@@ -263,6 +265,9 @@ export default function BatchesPage() {
                 const shareUrl = share.publicUrl ?? `${origin}${share.publicPath}`;
                 const expiresAtLabel = formatDateDdMmYyyy(share.expiresAt);
                 const countdown = formatCountdown(share.expiresAt, nowMs);
+                const previewLimitLabel = share.allowDownload
+                  ? "Unlimited"
+                  : String(Math.max(1, share.previewViewLimit ?? 3));
                 const isUpdating = updatingBatchIds.includes(batch.id);
                 const focusedBySuggestion = batch.id === batchIdFromQuery;
 
@@ -284,6 +289,8 @@ export default function BatchesPage() {
                         <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Expiry</p>
                         <p className="mt-1 text-xs font-semibold text-on-surface">{expiresAtLabel}</p>
                         <p className="mt-1 text-[10px] uppercase tracking-wider text-primary">{countdown}</p>
+                        <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Preview Limit</p>
+                        <p className="mt-1 text-xs font-semibold text-on-surface">{previewLimitLabel}</p>
                       </div>
                     </div>
 

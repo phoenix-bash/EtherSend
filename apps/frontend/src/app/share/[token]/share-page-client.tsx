@@ -292,6 +292,7 @@ export function SharePageClient({ token }: SharePageClientProps) {
     const sourceUrl = absoluteApiUrl(shareFilePath(token, file.id, "view"));
     const visibleFileName = hideFilenames ? "Filename hidden" : file.filename;
     const officePagesCacheKey = createPreviewPagesCacheKey(`share:${token}:office-pages`, file.id);
+    const enforcePreviewViewLimit = Boolean(data && !data.allowDownload && data.previewViewLimit !== null);
 
     setPreview((current) => {
       revokePreviewUrl(current?.objectUrl);
@@ -307,22 +308,39 @@ export function SharePageClient({ token }: SharePageClientProps) {
 
     try {
       if (isOfficeDocument(file) && !isPdfFile(file)) {
-        const pageUrls = await loadPreviewPagesWithCache({
-          cacheKey: officePagesCacheKey,
-          fetcher: async () => {
-            const officePreviewResponse = await fetch(absoluteApiUrl(shareFileOfficePagesPath(token, file.id)), {
-              credentials: "include",
-              headers: buildPreviewHeaders()
-            });
+        const fetchOfficePageUrls = async (): Promise<string[]> => {
+          const officePreviewResponse = await fetch(absoluteApiUrl(shareFileOfficePagesPath(token, file.id)), {
+            credentials: "include",
+            headers: buildPreviewHeaders()
+          });
 
-            if (!officePreviewResponse.ok) {
-              throw new Error(`Preview request failed with status ${officePreviewResponse.status}`);
+          if (!officePreviewResponse.ok) {
+            let message = `Preview request failed with status ${officePreviewResponse.status}`;
+            if (officePreviewResponse.status === 403) {
+              message = "Preview is unavailable for this file type when download is disabled.";
+              try {
+                const payload = (await officePreviewResponse.clone().json()) as { code?: string; details?: { code?: string } };
+                const code = payload.code || payload.details?.code;
+                if (code === "SHARE_PREVIEW_LIMIT_REACHED") {
+                  message = "Preview view limit reached for this share.";
+                }
+              } catch {
+                // Ignore non-JSON response body.
+              }
             }
-
-            const payload = (await officePreviewResponse.json()) as { success?: boolean; pages?: string[] };
-            return (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
+            throw new Error(message);
           }
-        });
+
+          const payload = (await officePreviewResponse.json()) as { success?: boolean; pages?: string[] };
+          return (payload.pages ?? []).map((pagePath) => absoluteApiUrl(pagePath));
+        };
+
+        const pageUrls = enforcePreviewViewLimit
+          ? await fetchOfficePageUrls()
+          : await loadPreviewPagesWithCache({
+              cacheKey: officePagesCacheKey,
+              fetcher: fetchOfficePageUrls
+            });
 
         setPreview((current) => {
           if (!current || current.sourceUrl !== sourceUrl) {
@@ -443,6 +461,32 @@ export function SharePageClient({ token }: SharePageClientProps) {
   }
 
   useEffect(() => {
+    function blockContextMenu(event: Event): void {
+      event.preventDefault();
+    }
+
+    function applyContextMenuProtection(): void {
+      window.addEventListener("contextmenu", blockContextMenu, true);
+      document.addEventListener("contextmenu", blockContextMenu, true);
+      document.documentElement?.addEventListener("contextmenu", blockContextMenu, true);
+      document.body?.addEventListener("contextmenu", blockContextMenu, true);
+    }
+
+    applyContextMenuProtection();
+    const protectionInterval = window.setInterval(() => {
+      applyContextMenuProtection();
+    }, 1000);
+
+    return () => {
+      window.clearInterval(protectionInterval);
+      window.removeEventListener("contextmenu", blockContextMenu, true);
+      document.removeEventListener("contextmenu", blockContextMenu, true);
+      document.documentElement?.removeEventListener("contextmenu", blockContextMenu, true);
+      document.body?.removeEventListener("contextmenu", blockContextMenu, true);
+    };
+  }, []);
+
+  useEffect(() => {
     if (securityLocked) {
       return;
     }
@@ -518,11 +562,6 @@ export function SharePageClient({ token }: SharePageClientProps) {
       return isPrintScreen || isWindowsSnip || isMacScreenshot;
     }
 
-    function onRestrictedAction(event: Event): void {
-      event.preventDefault();
-      triggerSecurityLock("Restricted interaction detected in protected preview.");
-    }
-
     function onScreenshotShortcut(event: KeyboardEvent): void {
       if (!isScreenshotShortcut(event)) {
         return;
@@ -556,22 +595,12 @@ export function SharePageClient({ token }: SharePageClientProps) {
       closePreviewOnFocusLoss("Preview closed after window change. Open the file again to continue.");
     }
 
-    window.addEventListener("contextmenu", onRestrictedAction, true);
-    window.addEventListener("copy", onRestrictedAction, true);
-    window.addEventListener("cut", onRestrictedAction, true);
-    window.addEventListener("dragstart", onRestrictedAction, true);
-    window.addEventListener("selectstart", onRestrictedAction, true);
     window.addEventListener("keydown", onScreenshotShortcut, true);
     window.addEventListener("keyup", onScreenshotShortcut, true);
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("blur", onWindowBlur);
 
     return () => {
-      window.removeEventListener("contextmenu", onRestrictedAction, true);
-      window.removeEventListener("copy", onRestrictedAction, true);
-      window.removeEventListener("cut", onRestrictedAction, true);
-      window.removeEventListener("dragstart", onRestrictedAction, true);
-      window.removeEventListener("selectstart", onRestrictedAction, true);
       window.removeEventListener("keydown", onScreenshotShortcut, true);
       window.removeEventListener("keyup", onScreenshotShortcut, true);
       document.removeEventListener("visibilitychange", onVisibilityChange);
@@ -598,7 +627,7 @@ export function SharePageClient({ token }: SharePageClientProps) {
   }, [data?.batch.name]);
 
   return (
-    <main className="glass-site mesh-gradient min-h-screen text-on-surface">
+    <main className="glass-site mesh-gradient min-h-screen text-on-surface" onContextMenu={(event) => event.preventDefault()}>
       <div className={lockActive || securityLocked ? "pointer-events-none select-none blur-sm" : undefined}>
         <header className="glass-header fixed left-0 right-0 top-0 z-50 flex h-20 items-center justify-between px-6 md:px-12">
           <Link href="/" className="flex items-center gap-4">
