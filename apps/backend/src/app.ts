@@ -105,15 +105,19 @@ function isStateChangingMethod(method: string): boolean {
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = fastify({ logger: true });
-  const documentConversionWorker = createDocumentConversionWorker();
+  const documentConversionWorker = env.ENABLE_DOCUMENT_CONVERSION_WORKER ? createDocumentConversionWorker() : null;
 
-  documentConversionWorker.on("completed", (job, result) => {
-    app.log.info({ jobId: job.id, mediaId: job.data.mediaId, result }, "Document conversion job completed");
-  });
+  if (documentConversionWorker) {
+    documentConversionWorker.on("completed", (job, result) => {
+      app.log.info({ jobId: job.id, mediaId: job.data.mediaId, result }, "Document conversion job completed");
+    });
 
-  documentConversionWorker.on("failed", (job, error) => {
-    app.log.error({ jobId: job?.id, mediaId: job?.data.mediaId, err: error }, "Document conversion job failed");
-  });
+    documentConversionWorker.on("failed", (job, error) => {
+      app.log.error({ jobId: job?.id, mediaId: job?.data.mediaId, err: error }, "Document conversion job failed");
+    });
+  } else {
+    app.log.info("Document conversion worker disabled for this process");
+  }
 
   await app.register(cors, {
     origin: (origin, callback) => {
@@ -291,7 +295,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   app.addHook("onClose", async () => {
-    await documentConversionWorker.close();
+    if (documentConversionWorker) {
+      await documentConversionWorker.close();
+    }
   });
 
   return app;

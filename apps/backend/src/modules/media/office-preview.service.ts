@@ -22,14 +22,63 @@ function safeFileStem(fileName: string): string {
   return stem.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120);
 }
 
-function resolveInputExtension(media: Pick<MediaFile, "filename" | "extension">): string {
+function resolveInputExtension(media: Pick<MediaFile, "filename" | "extension" | "mimeType">): string {
   const fromName = extname(media.filename || "").replace(".", "").toLowerCase();
   if (fromName) {
     return fromName;
   }
 
   const fromMedia = (media.extension || "").trim().toLowerCase();
-  return fromMedia || "bin";
+  if (fromMedia) {
+    return fromMedia;
+  }
+
+  const mime = (media.mimeType || "").toLowerCase();
+  if (mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation") {
+    return "pptx";
+  }
+
+  if (mime === "application/vnd.ms-powerpoint") {
+    return "ppt";
+  }
+
+  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    return "docx";
+  }
+
+  if (mime === "application/msword") {
+    return "doc";
+  }
+
+  if (mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+    return "xlsx";
+  }
+
+  if (mime === "application/vnd.ms-excel") {
+    return "xls";
+  }
+
+  if (mime === "application/vnd.oasis.opendocument.text") {
+    return "odt";
+  }
+
+  if (mime === "application/vnd.oasis.opendocument.spreadsheet") {
+    return "ods";
+  }
+
+  if (mime === "application/vnd.oasis.opendocument.presentation") {
+    return "odp";
+  }
+
+  if (mime === "text/html") {
+    return "html";
+  }
+
+  if (mime === "text/plain") {
+    return "txt";
+  }
+
+  return "txt";
 }
 
 function buildCachePaths(media: Pick<MediaFile, "id" | "filename" | "extension" | "updatedAt">): {

@@ -42,6 +42,7 @@ const envSchema = z.object({
   }, z.string().optional()),
   CLEANUP_INTERVAL_SECONDS: z.coerce.number().int().min(30).default(120),
   CLEANUP_BATCH_SIZE: z.coerce.number().int().min(1).default(100),
+  ENABLE_DOCUMENT_CONVERSION_WORKER: z.enum(["true", "false"]).default("true").transform((value) => value === "true"),
   MAX_UPLOAD_BYTES: z.coerce.number().positive().default(104857600),
   SIGNED_IN_MAX_TOTAL_BYTES: z.coerce.number().int().positive().default(262144000),
   SUPERUSER_EMAIL: z.string().email().default("superuser@example.com"),

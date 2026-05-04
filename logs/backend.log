@@ -4221,8 +4221,11 @@ Require stack:
 }
 
 Node.js v22.22.1
-:"Hades","reqId":"req-24","res":{"statusCode":204},"responseTime":0.5846690014004707,"msg":"request completed"}
-{"level":30,"time":1777813551393,"pid":92025,"hostname":"Hades","reqId":"req-25","req":{"method":"GET","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":42468},"msg":"incoming request"}
+/home/phoenix/LinkForge/apps/backend:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @linkforge/backend@0.1.0 dev: `tsx watch src/index.ts`
+Command failed with signal "SIGTERM"
+ WARN   Local package.json exists, but node_modules missing, did you mean to install?
+4000","remoteAddress":"127.0.0.1","remotePort":42468},"msg":"incoming request"}
 {"level":30,"time":1777813551405,"pid":92025,"hostname":"Hades","reqId":"req-25","res":{"statusCode":200},"responseTime":11.485936999320984,"msg":"request completed"}
 {"level":30,"time":1777813571393,"pid":92025,"hostname":"Hades","reqId":"req-26","req":{"method":"OPTIONS","url":"/activity?limit=20","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":53602},"msg":"incoming request"}
 {"level":30,"time":1777813571394,"pid":92025,"hostname":"Hades","reqId":"req-26","res":{"statusCode":204},"responseTime":0.4967169985175133,"msg":"request completed"}
