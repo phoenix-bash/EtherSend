@@ -606,7 +606,6 @@ export class BatchService {
       if (configuredLimit !== null && configuredLimit !== undefined) {
         const currentCount = await this.repository.countPreviewViewsForShareFile(token, media.id);
         if (currentCount >= configuredLimit) {
-          await this.repository.expireShareToken(share.batchId, new Date());
           throw new HttpError(403, "Preview view limit reached for this share", {
             code: "SHARE_PREVIEW_LIMIT_REACHED"
           });

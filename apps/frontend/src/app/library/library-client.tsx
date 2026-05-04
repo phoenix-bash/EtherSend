@@ -26,6 +26,8 @@ import { clearPreviewPagesCacheForFile, createPreviewPagesCacheKey, loadPreviewP
 type MediaFilter = "all" | "image" | "video" | "json" | "other";
 type ViewMode = "grid" | "list";
 
+const PAGE_SIZE = 12;
+const PREVIEW_TEMPORARILY_UNAVAILABLE_MESSAGE = "File preview is temporarily unavailable. Please try again.";
 const TEXT_FILE_EXTENSIONS = new Set([
   "txt",
   "md",
@@ -534,8 +536,13 @@ export default function MediaLibraryPage() {
           return;
         }
 
+        console.error("Library preview failed", {
+          fileId: currentPreviewItem.id,
+          error
+        });
+
         setPreviewLoading(false);
-        setPreviewError("Preview failed to load in dialog. Use Open to view in a new tab.");
+        setPreviewError(PREVIEW_TEMPORARILY_UNAVAILABLE_MESSAGE);
       }
     }
 

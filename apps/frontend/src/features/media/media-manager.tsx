@@ -49,6 +49,8 @@ interface PreviewState {
   error?: string;
 }
 
+const PREVIEW_TEMPORARILY_UNAVAILABLE_MESSAGE = "File preview is temporarily unavailable. Please try again.";
+
 const TEXT_FILE_EXTENSIONS = new Set([
   "txt",
   "md",
@@ -515,10 +517,15 @@ export function MediaManager() {
           return current;
         }
 
+        console.error("Media manager preview failed", {
+          fileId: item.id,
+          error: caughtError
+        });
+
         return {
           ...current,
           loading: false,
-          error: caughtError instanceof Error ? caughtError.message : "Unable to load file preview."
+          error: PREVIEW_TEMPORARILY_UNAVAILABLE_MESSAGE
         };
       });
     }

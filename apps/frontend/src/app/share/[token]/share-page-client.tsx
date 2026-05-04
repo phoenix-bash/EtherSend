@@ -34,6 +34,9 @@ interface PreviewState {
   error?: string;
 }
 
+const PREVIEW_TEMPORARILY_UNAVAILABLE_MESSAGE = "File preview is temporarily unavailable. Please try again.";
+const PREVIEW_LIMIT_REACHED_MESSAGE = "Preview view limit reached for this file.";
+
 const TEXT_FILE_EXTENSIONS = new Set([
   "txt",
   "md",
@@ -237,7 +240,7 @@ function renderShareThumbnail(token: string, file: PublicBatchShare["batch"]["fi
 export function SharePageClient({ token }: SharePageClientProps) {
   const [data, setData] = useState<PublicBatchShare | null>(null);
   const [status, setStatus] = useState<string>("Loading shared files...");
-  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [, setErrorStatus] = useState<number | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [securityLocked, setSecurityLocked] = useState(false);
   const [securityLockReason, setSecurityLockReason] = useState<string | null>(null);
@@ -315,14 +318,13 @@ export function SharePageClient({ token }: SharePageClientProps) {
           });
 
           if (!officePreviewResponse.ok) {
-            let message = `Preview request failed with status ${officePreviewResponse.status}`;
+            let message = PREVIEW_TEMPORARILY_UNAVAILABLE_MESSAGE;
             if (officePreviewResponse.status === 403) {
-              message = "Preview is unavailable for this file type when download is disabled.";
               try {
                 const payload = (await officePreviewResponse.clone().json()) as { code?: string; details?: { code?: string } };
                 const code = payload.code || payload.details?.code;
                 if (code === "SHARE_PREVIEW_LIMIT_REACHED") {
-                  message = "Preview view limit reached for this share.";
+                  message = PREVIEW_LIMIT_REACHED_MESSAGE;
                 }
               } catch {
                 // Ignore non-JSON response body.
@@ -359,13 +361,13 @@ export function SharePageClient({ token }: SharePageClientProps) {
 
       const response = await fetch(sourceUrl, { credentials: "include", headers: buildPreviewHeaders() });
       if (!response.ok) {
-        let message = response.status === 403 ? "Preview is unavailable for this file type when download is disabled." : `Preview request failed with status ${response.status}`;
+        let message = PREVIEW_TEMPORARILY_UNAVAILABLE_MESSAGE;
         if (response.status === 403) {
           try {
             const payload = (await response.clone().json()) as { code?: string; details?: { code?: string } };
             const code = payload.code || payload.details?.code;
             if (code === "SHARE_PREVIEW_LIMIT_REACHED") {
-              message = "Preview view limit reached for this share.";
+              message = PREVIEW_LIMIT_REACHED_MESSAGE;
             }
           } catch {
             // Ignore non-JSON response body.
@@ -416,10 +418,19 @@ export function SharePageClient({ token }: SharePageClientProps) {
           return current;
         }
 
+        console.error("Share preview failed", {
+          token,
+          fileId: file.id,
+          error: caughtError
+        });
+
         return {
           ...current,
           loading: false,
-          error: caughtError instanceof Error ? caughtError.message : "Unable to load file preview."
+          error:
+            caughtError instanceof Error && caughtError.message === PREVIEW_LIMIT_REACHED_MESSAGE
+              ? PREVIEW_LIMIT_REACHED_MESSAGE
+              : PREVIEW_TEMPORARILY_UNAVAILABLE_MESSAGE
         };
       });
     }
@@ -730,7 +741,6 @@ export function SharePageClient({ token }: SharePageClientProps) {
             </div>
           )}
 
-          {errorStatus ? <p className="mt-4 text-xs text-error">Status: {errorStatus}</p> : null}
         </div>
 
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-4">
