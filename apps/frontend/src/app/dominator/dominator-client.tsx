@@ -105,6 +105,9 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
   const [mode, setMode] = useState<"MONITOR" | "DESTRUCTIVE">("MONITOR");
   const [modeBusy, setModeBusy] = useState(false);
   const [reloadBusy, setReloadBusy] = useState(false);
+  const [destructiveModeDialogOpen, setDestructiveModeDialogOpen] = useState(false);
+  const [destructiveModePassword, setDestructiveModePassword] = useState("");
+  const [destructiveModeError, setDestructiveModeError] = useState("");
 
   const canLogin = Boolean(challengeToken) && email.length > 0 && password.length > 0;
 
@@ -331,14 +334,14 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
     ];
   }, [overview]);
 
-  function promptForDominatorPassword(): string | null {
-    const provided = window.prompt("Enter dominator password to enable Destructive mode:", "");
-    if (!provided) {
-      return null;
+  function closeDestructiveModeDialog(): void {
+    if (modeBusy) {
+      return;
     }
 
-    const trimmed = provided.trim();
-    return trimmed.length > 0 ? trimmed : null;
+    setDestructiveModeDialogOpen(false);
+    setDestructiveModePassword("");
+    setDestructiveModeError("");
   }
 
   async function handleModeChange(nextMode: "MONITOR" | "DESTRUCTIVE"): Promise<void> {
@@ -349,30 +352,44 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
     if (nextMode === "MONITOR") {
       setMode("MONITOR");
       setSuperuserPassword("");
+      setDestructiveModeDialogOpen(false);
+      setDestructiveModePassword("");
+      setDestructiveModeError("");
       setActionStatus("Monitor mode enabled.");
       setActionError("");
       return;
     }
 
-    const passwordFromPrompt = promptForDominatorPassword();
-    if (!passwordFromPrompt) {
-      setActionError("Destructive mode was cancelled.");
+    setDestructiveModeDialogOpen(true);
+    setDestructiveModePassword("");
+    setDestructiveModeError("");
+    setActionError("");
+    setActionStatus("");
+  }
+
+  async function handleEnableDestructiveMode(): Promise<void> {
+    const password = destructiveModePassword.trim();
+    if (!password) {
+      setDestructiveModeError("Enter dominator password.");
       return;
     }
 
     setModeBusy(true);
-    setActionStatus("");
-    setActionError("");
+    setDestructiveModeError("");
     try {
-      await verifyDominatorDestructiveMode(passwordFromPrompt);
-      setSuperuserPassword(passwordFromPrompt);
+      await verifyDominatorDestructiveMode(password);
+      setSuperuserPassword(password);
       setMode("DESTRUCTIVE");
+      setDestructiveModeDialogOpen(false);
+      setDestructiveModePassword("");
+      setDestructiveModeError("");
       setActionStatus("Destructive mode enabled.");
+      setActionError("");
     } catch (error) {
       if (error instanceof ApiError) {
-        setActionError(error.message);
+        setDestructiveModeError(error.message);
       } else {
-        setActionError("Mode verification failed");
+        setDestructiveModeError("Mode verification failed");
       }
     } finally {
       setModeBusy(false);
@@ -671,6 +688,53 @@ export default function DominatorClient({ initialChallengeToken, hasActiveSessio
           </div>
         </section>
       </div>
+
+      {destructiveModeDialogOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgb(20_24_30_/_0.8)] p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[#2b3349] bg-[#0f1320] p-4 shadow-2xl">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#8f9ab5]">Enable Destructive Mode</p>
+            <p className="mt-2 text-sm text-[#cfd6f6]">Enter dominator password to unlock destructive actions.</p>
+
+            <input
+              autoFocus
+              type="password"
+              value={destructiveModePassword}
+              onChange={(event) => setDestructiveModePassword(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleEnableDestructiveMode();
+                }
+              }}
+              placeholder="Dominator password"
+              className="mt-3 h-10 w-full rounded border border-[#2b3349] bg-[#0c1020] px-3 text-sm text-[#f0f3ff] outline-none"
+            />
+
+            {destructiveModeError ? <p className="mt-2 text-xs text-[#ff8e8e]">{destructiveModeError}</p> : null}
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={modeBusy}
+                onClick={closeDestructiveModeDialog}
+                className="h-9 rounded border border-[#2b3349] px-3 text-xs uppercase tracking-wider text-[#cfd6f6] disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={modeBusy}
+                onClick={() => {
+                  void handleEnableDestructiveMode();
+                }}
+                className="h-9 rounded border border-[#6f2230] bg-[#2b1017] px-3 text-xs uppercase tracking-wider text-[#ffb8c3] disabled:opacity-40"
+              >
+                {modeBusy ? "Verifying..." : "Enable"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
