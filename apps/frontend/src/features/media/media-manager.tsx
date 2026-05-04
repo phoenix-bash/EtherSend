@@ -224,7 +224,7 @@ export function MediaManager() {
   const [batchShareRecipientEmail, setBatchShareRecipientEmail] = useState("");
   const [batchShareEmailMode, setBatchShareEmailMode] = useState(false);
   const [batchShareDialogStatus, setBatchShareDialogStatus] = useState("");
-  const [batchPreviewViewLimit, setBatchPreviewViewLimit] = useState("3");
+  const [batchPreviewViewLimit, setBatchPreviewViewLimit] = useState("unlimited");
   const [batchExpiryMode, setBatchExpiryMode] = useState<"max" | "dateTime" | "duration">("max");
   const [batchExpiryDateTime, setBatchExpiryDateTime] = useState("");
   const [batchDurationHours, setBatchDurationHours] = useState("2");
@@ -383,6 +383,14 @@ export function MediaManager() {
 
   function openDateTimePicker(target: HTMLInputElement): void {
     (target as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
+  }
+
+  function resolvePreviewLimitValue(selection: string): number | null {
+    if (selection === "unlimited") {
+      return null;
+    }
+
+    return Math.max(1, Math.min(5, Number(selection) || 1));
   }
 
   async function openPreview(item: MediaItem): Promise<void> {
@@ -751,7 +759,7 @@ export function MediaManager() {
       return null;
     }
 
-    const previewViewLimit = !batchAllowDownload ? Math.max(1, Math.min(5, Number(batchPreviewViewLimit) || 3)) : undefined;
+    const previewViewLimit = !batchAllowDownload ? resolvePreviewLimitValue(batchPreviewViewLimit) : undefined;
 
     try {
       const batchResult = await createBatch(targetMediaIds, batchName || undefined);
@@ -767,7 +775,7 @@ export function MediaManager() {
 
       setBatchId(batchResult.batch.id);
       setBatchAllowDownload(shareResult.share.allowDownload);
-      setBatchPreviewViewLimit(String(shareResult.share.previewViewLimit ?? previewViewLimit ?? 3));
+      setBatchPreviewViewLimit(shareResult.share.previewViewLimit === null ? "unlimited" : String(shareResult.share.previewViewLimit));
       setBatchSharePreview({
         url: publicUrl,
         expiresAt: shareResult.share.expiresAt
@@ -809,12 +817,12 @@ export function MediaManager() {
       return;
     }
 
-    const previewViewLimit = !nextAllowDownload ? Math.max(1, Math.min(5, Number(batchPreviewViewLimit) || 3)) : undefined;
+    const previewViewLimit = !nextAllowDownload ? resolvePreviewLimitValue(batchPreviewViewLimit) : undefined;
 
     try {
       const updated = await updateBatchShare(batchId, nextAllowDownload, hideFilenamesOnShare, undefined, previewViewLimit);
       setBatchAllowDownload(updated.share.allowDownload);
-      setBatchPreviewViewLimit(String(updated.share.previewViewLimit ?? previewViewLimit ?? 3));
+      setBatchPreviewViewLimit(updated.share.previewViewLimit === null ? "unlimited" : String(updated.share.previewViewLimit));
       setBatchSharePreview((current) => {
         if (!current) {
           return current;
@@ -840,12 +848,12 @@ export function MediaManager() {
       return;
     }
 
-    const previewViewLimit = !batchAllowDownload ? Math.max(1, Math.min(5, Number(batchPreviewViewLimit) || 3)) : undefined;
+    const previewViewLimit = !batchAllowDownload ? resolvePreviewLimitValue(batchPreviewViewLimit) : undefined;
 
     try {
       const updated = await updateBatchShare(batchId, batchAllowDownload, nextHideFilenames, undefined, previewViewLimit);
       setBatchAllowDownload(updated.share.allowDownload);
-      setBatchPreviewViewLimit(String(updated.share.previewViewLimit ?? previewViewLimit ?? 3));
+      setBatchPreviewViewLimit(updated.share.previewViewLimit === null ? "unlimited" : String(updated.share.previewViewLimit));
       setBatchSharePreview((current) => {
         if (!current) {
           return current;
@@ -974,6 +982,7 @@ export function MediaManager() {
                         }}
                         className="min-w-0 rounded-md border border-outline-variant/20 bg-surface-container-lowest px-2 py-1 text-[11px] text-on-surface"
                       >
+                        <option value="unlimited">Unlimited</option>
                         <option value="1">1</option>
                         <option value="2">2</option>
                         <option value="3">3</option>

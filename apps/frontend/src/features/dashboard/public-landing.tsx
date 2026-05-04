@@ -342,7 +342,12 @@ export function PublicLanding({ onContinueAsGuest }: PublicLandingProps) {
               <img src="/Media_Assets/EtherSend.png" alt="EtherSend logo" className="landing-brand-logo landing-footer-logo" />
               <span className="landing-footer-brand">EtherSend</span>
             </Link>
-            <p className="landing-footer-copy">SEND IT. CONTROL IT. MAKE IT DISAPPEAR. © {currentYear}</p>
+            <div className="flex flex-col items-start gap-2 md:items-end">
+              <p className="landing-footer-copy">SEND IT. CONTROL IT. MAKE IT DISAPPEAR. © {currentYear}</p>
+              <Link href="/legal/disclaimer" className="text-[11px] uppercase tracking-wider text-on-surface-variant hover:text-primary">
+                Legal Disclaimer & Acceptable Use
+              </Link>
+            </div>
           </div>
         </footer>
       </div>

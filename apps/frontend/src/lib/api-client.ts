@@ -839,7 +839,7 @@ export function createOrRefreshBatchShare(
   allowDownload?: boolean,
   hideFilenames?: boolean,
   password?: string,
-  previewViewLimit?: number,
+  previewViewLimit?: number | null,
   customExpiry?: { expiresAt?: string; durationMinutes?: number }
 ): Promise<{ share: BatchShareResult }> {
   return apiRequest<{ share: BatchShareResult }>(`/batches/${batchId}/share`, {
@@ -860,7 +860,7 @@ export function updateBatchShare(
   allowDownload: boolean,
   hideFilenames?: boolean,
   password?: string,
-  previewViewLimit?: number
+  previewViewLimit?: number | null
 ): Promise<{ share: BatchShareResult }> {
   return apiRequest<{ share: BatchShareResult }>(`/batches/${batchId}/share`, {
     method: "PATCH",

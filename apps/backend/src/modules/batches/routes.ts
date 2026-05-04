@@ -23,7 +23,7 @@ const createShareSchema = z.object({
   allowDownload: z.boolean().optional(),
   hideFilenames: z.boolean().optional(),
   password: z.string().max(256).optional(),
-  previewViewLimit: z.coerce.number().int().min(1).max(5).optional(),
+  previewViewLimit: z.union([z.coerce.number().int().min(1).max(5), z.null()]).optional(),
   expiresAt: z.coerce.date().optional(),
   durationMinutes: z.coerce.number().int().positive().optional()
 });
@@ -32,7 +32,7 @@ const updateShareSchema = z.object({
   allowDownload: z.boolean(),
   hideFilenames: z.boolean().optional(),
   password: z.string().max(256).optional(),
-  previewViewLimit: z.coerce.number().int().min(1).max(5).optional()
+  previewViewLimit: z.union([z.coerce.number().int().min(1).max(5), z.null()]).optional()
 });
 
 const shareEmailSchema = z.object({

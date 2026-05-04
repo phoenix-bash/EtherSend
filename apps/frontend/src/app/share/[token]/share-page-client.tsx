@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Download, Eye } from "lucide-react";
+import { AlertTriangle, Download, Eye } from "lucide-react";
 import { FileViewer } from "../../../components/file-viewer";
 import {
   API_BASE_URL,
@@ -205,7 +205,15 @@ function isOfficeDocument(file: { mimeType: string; filename: string }): boolean
   return ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "pps", "ppsx", "odt", "ods", "odp", "txt", "html", "htm"].includes(extension);
 }
 
-function renderShareThumbnail(token: string, file: PublicBatchShare["batch"]["files"][number]) {
+function renderShareThumbnail(token: string, file: PublicBatchShare["batch"]["files"][number], locked: boolean) {
+  if (locked) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-surface-container-low text-on-surface-variant">
+        <span className="material-symbols-outlined text-3xl">lock</span>
+      </div>
+    );
+  }
+
   const kind = classifyMimeType(file.mimeType);
 
   if (kind === "image") {
@@ -249,6 +257,7 @@ export function SharePageClient({ token }: SharePageClientProps) {
   const [passwordRequired, setPasswordRequired] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [previewLimitExceededFileIds, setPreviewLimitExceededFileIds] = useState<string[]>([]);
 
   const hideFilenames = Boolean(data?.hideFilenames);
   const lockActive = passwordRequired && !data;
@@ -433,6 +442,10 @@ export function SharePageClient({ token }: SharePageClientProps) {
               : PREVIEW_TEMPORARILY_UNAVAILABLE_MESSAGE
         };
       });
+
+      if (caughtError instanceof Error && caughtError.message === PREVIEW_LIMIT_REACHED_MESSAGE) {
+        setPreviewLimitExceededFileIds((current) => (current.includes(file.id) ? current : [...current, file.id]));
+      }
     }
   }
 
@@ -510,6 +523,7 @@ export function SharePageClient({ token }: SharePageClientProps) {
       try {
         const result = await fetchPublicBatchShare(token, sharePassword);
         setData(result);
+        setPreviewLimitExceededFileIds([]);
         setPasswordRequired(result.hasPassword);
         setErrorStatus(null);
         setStatus("Shared files loaded.");
@@ -681,9 +695,14 @@ export function SharePageClient({ token }: SharePageClientProps) {
             </div>
 
             <div className="flex flex-col gap-4 md:items-end">
-              <span className="rounded-lg border border-outline-variant/20 bg-surface-container px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                {data?.allowDownload ? "Public download enabled" : "Download restricted by owner"}
-              </span>
+              {data?.allowDownload ? (
+                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Public download enabled</span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-warning">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Download restricted by owner
+                </span>
+              )}
             </div>
           </section>
 
@@ -692,10 +711,11 @@ export function SharePageClient({ token }: SharePageClientProps) {
           ) : (
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-4">
               {data.batch.files.map((file) => {
+                const thumbnailLocked = hideFilenames || previewLimitExceededFileIds.includes(file.id);
                 return (
                   <article key={file.id} className="glass-card ghost-border flex flex-col rounded-xl border border-outline-variant/20 p-3">
                     <div className="relative mb-3 aspect-[4/3] overflow-hidden rounded-lg border border-outline-variant/15 bg-surface-container-lowest">
-                      {renderShareThumbnail(token, file)}
+                      {renderShareThumbnail(token, file, thumbnailLocked)}
                     </div>
 
                     <h3 className="truncate text-sm font-bold text-on-surface" title={hideFilenames ? undefined : file.filename}>

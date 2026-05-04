@@ -262,7 +262,7 @@ export class BatchService {
     allowDownload?: boolean,
     hideFilenames?: boolean,
     password?: string,
-    previewViewLimit?: number,
+    previewViewLimit?: number | null,
     requestedExpiry?: CreateBatchShareExpiryInput
   ): Promise<{
     token: string;
@@ -310,7 +310,13 @@ export class BatchService {
     const resolvedAllowDownload = allowDownload ?? batch.shareToken?.allowDownload ?? false;
     const resolvedHideFilenames = hideFilenames ?? (batch.shareToken as { hideFilenames?: boolean } | null)?.hideFilenames ?? false;
     const existingPreviewViewLimit = (batch.shareToken as { previewViewLimit?: number | null } | null)?.previewViewLimit ?? null;
-    const resolvedPreviewViewLimit = resolvedAllowDownload ? null : Math.max(1, Math.min(5, previewViewLimit ?? existingPreviewViewLimit ?? 3));
+    const resolvedPreviewViewLimit = resolvedAllowDownload
+      ? null
+      : previewViewLimit === null
+        ? null
+        : previewViewLimit !== undefined
+          ? Math.max(1, Math.min(5, previewViewLimit))
+          : existingPreviewViewLimit;
     if (password !== undefined && actor.kind !== "user") {
       throw new HttpError(403, "Share password is available for signed-in users only");
     }
@@ -414,7 +420,7 @@ export class BatchService {
     allowDownload: boolean,
     hideFilenames?: boolean,
     password?: string,
-    previewViewLimit?: number
+    previewViewLimit?: number | null
   ): Promise<{
     token: string;
     allowDownload: boolean;
@@ -445,7 +451,13 @@ export class BatchService {
         : undefined;
 
     const existingPreviewViewLimit = (batch.shareToken as { previewViewLimit?: number | null }).previewViewLimit ?? null;
-    const resolvedPreviewViewLimit = allowDownload ? null : Math.max(1, Math.min(5, previewViewLimit ?? existingPreviewViewLimit ?? 3));
+    const resolvedPreviewViewLimit = allowDownload
+      ? null
+      : previewViewLimit === null
+        ? null
+        : previewViewLimit !== undefined
+          ? Math.max(1, Math.min(5, previewViewLimit))
+          : existingPreviewViewLimit;
 
     const updated = await this.repository.updateShareToken(batch.id, {
       allowDownload,
